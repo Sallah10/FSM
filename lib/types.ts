@@ -10,21 +10,23 @@ export interface Job {
 export interface Technician {
   id: string;
   name: string;
-  role: string;
-  phone: string;
-}
-
-export interface Customer {
-  id: string;
-  name: string;
   email: string;
-  phone: string;
+  phone?: string;
 }
 
 export interface Invoice {
   id: string;
   customer: string;
   amount: number;
-  status: 'paid' | 'unpaid';
-  dueDate: string;
+  status?: string;
+  date?: string;
+  items?: { name: string; price: number }[];
+}
+
+export interface Customer {
+  id: string;
+  name: string;
+  email: string;
+  phone?: string;
+  address?: string;
 }

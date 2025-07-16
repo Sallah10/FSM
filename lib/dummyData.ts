@@ -31,8 +31,8 @@ export const technicians: Technician[] = [
 ];
 
 export const customers: Customer[] = [
-  { id: 'c1', name: 'Ibrahim Musa', email: 'ibrahim@example.com', phone: '08012312345' },
-  { id: 'c2', name: 'Fatima Bello', email: 'fatima@example.com', phone: '08045678901' },
+  { id: 'c1', name: 'Ibrahim Musa', email: 'ibrahim@example.com', phone: '08012312345', address: 'houston, california' },
+  { id: 'c2', name: 'Fatima Bello', email: 'fatima@example.com', phone: '08045678901', address: 'houston, california' },
 ];
 
 export const invoices: Invoice[] = [

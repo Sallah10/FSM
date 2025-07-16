@@ -1,25 +1,39 @@
-'use client';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
-import { Card } from "@/components/ui/card";
-
-interface InvoicePreviewProps {
+interface Invoice {
     id: string;
     customer: string;
     amount: number;
-    status: 'paid' | 'unpaid';
-    dueDate: string;
+    status?: string;
+    date?: string;
+    items?: { name: string; price: number }[];
 }
 
-export default function InvoicePreview({ id, customer, amount, status, dueDate }: InvoicePreviewProps) {
+export default function InvoicePreview({ invoice }: { invoice: Invoice }) {
     return (
-        <Card className="p-4 space-y-1 shadow-sm">
-            <h3 className="text-lg font-semibold">Invoice #{id}</h3>
-            <p className="text-sm">Customer: {customer}</p>
-            <p className="text-sm">Amount: ₦{amount.toLocaleString()}</p>
-            <p className="text-sm">Due: {dueDate}</p>
-            <p className={`text-sm font-medium ${status === 'paid' ? 'text-green-600' : 'text-red-600'}`}>
-                Status: {status}
-            </p>
+        <Card className="bg-card text-card-foreground">
+            <CardHeader>
+                <CardTitle>Invoice #{invoice.id}</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2">
+                <p><strong>Customer:</strong> {invoice.customer}</p>
+                <p><strong>Amount:</strong> ₦{invoice.amount}</p>
+                {invoice.status && <p><strong>Status:</strong> {invoice.status}</p>}
+                {invoice.date && <p><strong>Date:</strong> {invoice.date}</p>}
+
+                {invoice.items && (
+                    <div className="pt-4">
+                        <h4 className="font-semibold mb-1">Items</h4>
+                        <ul className="list-disc list-inside text-sm space-y-1">
+                            {invoice.items.map((item, index) => (
+                                <li key={index}>
+                                    {item.name} - ₦{item.price}
+                                </li>
+                            ))}
+                        </ul>
+                    </div>
+                )}
+            </CardContent>
         </Card>
     );
 }

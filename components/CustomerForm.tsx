@@ -1,15 +1,30 @@
 'use client';
 
 import { useState } from 'react';
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
+import { Label } from '@/components/ui/label';
 
-interface CustomerFormProps {
-    onSubmit: (data: unknown) => void;
+interface Customer {
+    name: string;
+    email: string;
+    phone?: string;
+    address?: string;
 }
 
-export default function CustomerForm({ onSubmit }: CustomerFormProps) {
-    const [form, setForm] = useState({ name: '', email: '', phone: '' });
+export default function CustomerForm({
+    onSubmit,
+    defaultValues,
+}: {
+    onSubmit: (data: Customer) => void;
+    defaultValues?: Partial<Customer>;
+}) {
+    const [form, setForm] = useState<Customer>({
+        name: defaultValues?.name || '',
+        email: defaultValues?.email || '',
+        phone: defaultValues?.phone || '',
+        address: defaultValues?.address || '',
+    });
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         setForm({ ...form, [e.target.name]: e.target.value });
@@ -22,10 +37,27 @@ export default function CustomerForm({ onSubmit }: CustomerFormProps) {
 
     return (
         <form onSubmit={handleSubmit} className="space-y-4">
-            <Input name="name" placeholder="Customer name" value={form.name} onChange={handleChange} />
-            <Input name="email" placeholder="Email address" value={form.email} onChange={handleChange} />
-            <Input name="phone" placeholder="Phone number" value={form.phone} onChange={handleChange} />
-            <Button type="submit">Add Customer</Button>
+            <div>
+                <Label htmlFor="name">Name</Label>
+                <Input name="name" value={form.name} onChange={handleChange} required />
+            </div>
+
+            <div>
+                <Label htmlFor="email">Email</Label>
+                <Input name="email" value={form.email} onChange={handleChange} required />
+            </div>
+
+            <div>
+                <Label htmlFor="phone">Phone</Label>
+                <Input name="phone" value={form.phone} onChange={handleChange} />
+            </div>
+
+            <div>
+                <Label htmlFor="address">Address</Label>
+                <Input name="address" value={form.address} onChange={handleChange} />
+            </div>
+
+            <Button type="submit">Save Customer</Button>
         </form>
     );
 }

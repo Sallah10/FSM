@@ -1,19 +1,20 @@
-'use client';
+import { Card } from '@/components/ui/card';
 
-import { Card } from "@/components/ui/card";
-
-interface TechnicianCardProps {
+interface Technician {
+    id: string;
     name: string;
-    role: string;
-    phone: string;
+    email: string;
+    phone?: string;
 }
 
-export default function TechnicianCard({ name, role, phone }: TechnicianCardProps) {
+export default function TechnicianCard({ technician }: { technician: Technician }) {
     return (
-        <Card className="p-4 space-y-1 shadow-sm">
-            <h3 className="font-semibold text-lg">{name}</h3>
-            <p className="text-sm text-muted-foreground">{role}</p>
-            <p className="text-sm">{phone}</p>
+        <Card className="p-4 space-y-1 bg-card text-card-foreground">
+            <h3 className="font-semibold text-base">{technician.name}</h3>
+            <p className="text-sm text-muted-foreground">{technician.email}</p>
+            {technician.phone && (
+                <p className="text-sm text-muted-foreground">{technician.phone}</p>
+            )}
         </Card>
     );
 }
