@@ -16,7 +16,7 @@ export default function CustomersPage() {
                 {customers.map((customer) => (
                     <div
                         key={customer.id}
-                        className="flex justify-between items-center p-4 bg-card border rounded-lg"
+                        className="flex justify-between items-center p-4 bg-background border rounded-lg"
                     >
                         <div>
                             <p className="font-semibold">{customer.name}</p>

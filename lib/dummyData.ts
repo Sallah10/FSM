@@ -26,8 +26,8 @@ export const jobs: Job[] = [
 ];
 
 export const technicians: Technician[] = [
-  { id: 't1', name: 'Aliyu Danjuma', role: 'Electrician', phone: '08012345678' },
-  { id: 't2', name: 'Chioma Uche', role: 'Plumber', phone: '08087654321' },
+  { id: 't1', name: 'Aliyu Danjuma', role: 'Electrician', phone: '08012345678', email: 'dummyemail@303'},
+  { id: 't2', name: 'Chioma Uche', role: 'Plumber', phone: '08087654321', email: 'dummyemail@303' },
 ];
 
 export const customers: Customer[] = [
@@ -36,6 +36,6 @@ export const customers: Customer[] = [
 ];
 
 export const invoices: Invoice[] = [
-  { id: 'inv1', customer: 'Ibrahim Musa', amount: 15000, status: 'unpaid', dueDate: '2025-07-20' },
-  { id: 'inv2', customer: 'Fatima Bello', amount: 30000, status: 'paid', dueDate: '2025-07-10' },
+  { id: 'inv1', customer: 'Ibrahim Musa', amount: 15000, status: 'unpaid', date: '2025-07-20' },
+  { id: 'inv2', customer: 'Fatima Bello', amount: 30000, status: 'paid', date: '2025-07-10' },
 ];

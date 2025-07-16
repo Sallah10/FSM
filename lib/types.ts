@@ -12,6 +12,7 @@ export interface Technician {
   name: string;
   email: string;
   phone?: string;
+  role: string;
 }
 
 export interface Invoice {

@@ -16,6 +16,8 @@ import {
 } from 'lucide-react';
 import ThemeToggle from '@/components/ThemeToggle';
 import { useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+
 
 const navItems = [
     { label: 'Dashboard', href: '/dashboard', icon: <LayoutDashboard size={18} /> },
@@ -35,18 +37,38 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
             <h2 className="text-xl font-bold mb-6">QuickSet</h2>
             <nav className="space-y-2">
                 {navItems.map((item) => (
+                    // <Link
+                    //     key={item.href}
+                    //     href={item.href}
+                    //     className={cn(
+                    //         'flex items-center gap-3 p-2 rounded-md text-sm font-medium hover:bg-muted transition-all',
+                    //         pathname.startsWith(item.href) && 'bg-muted'
+                    //     )}
+                    //     onClick={() => setMobileOpen(false)}
+                    // >
+                    //     {item.icon}
+                    //     {item.label}
+                    // </Link>
                     <Link
                         key={item.href}
                         href={item.href}
                         className={cn(
-                            'flex items-center gap-3 p-2 rounded-md text-sm font-medium hover:bg-muted transition-all',
-                            pathname.startsWith(item.href) && 'bg-muted'
+                            'flex items-center gap-3 p-2 rounded-md text-sm transition-all font-medium hover:bg-muted',
+                            pathname.startsWith(item.href)
+                                ? 'bg-muted font-semibold text-primary scale-[0.8]'
+                                : 'text-muted-foreground'
                         )}
                         onClick={() => setMobileOpen(false)}
                     >
-                        {item.icon}
-                        {item.label}
+                        <div className={cn(
+                            "transition-transform",
+                            pathname.startsWith(item.href) ? "scale-110" : "scale-100"
+                        )}>
+                            {item.icon}
+                        </div>
+                        <span>{item.label}</span>
                     </Link>
+
                 ))}
             </nav>
             <div className="mt-auto pt-6">
@@ -65,12 +87,44 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
             </aside>
 
             {/* Sidebar - Mobile Drawer */}
-            {mobileOpen && (
-                <div className="fixed inset-0 z-50 flex">
-                    <div className="w-64 bg-background border-r p-4">{SidebarContent}</div>
-                    <div className="flex-1 bg-black/50" onClick={() => setMobileOpen(false)} />
-                </div>
-            )}
+
+
+            <AnimatePresence>
+                {mobileOpen && (
+                    <motion.div
+                        className="fixed inset-0 z-50  flex"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                    >
+                        {/* Sidebar */}
+                        <motion.div
+                            initial={{ x: -300 }}
+                            animate={{ x: 0 }}
+                            exit={{ x: -300 }}
+                            transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                            className="w-64 bg-background border-r p-4 relative z-50 shadow-lg  backdrop-blur-sm"
+                        >
+                            <div className="bg-background h-full w-full rounded-lg p-2">
+                                <button onClick={() => setMobileOpen(!mobileOpen)} className="md:hidden mb-4">
+                                    <X size={20} />
+                                </button>
+                                {SidebarContent}
+                            </div>
+                        </motion.div>
+
+                        {/* Backdrop */}
+                        <motion.div
+                            className="flex-1 bg-black/50 backdrop-blur-sm"
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            onClick={() => setMobileOpen(false)}
+                        />
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
 
             {/* Main Content */}
             <div className="flex-1 flex flex-col">

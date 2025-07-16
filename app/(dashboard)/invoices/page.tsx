@@ -10,7 +10,7 @@ export default function InvoicesPage() {
                 {invoices.map((invoice) => (
                     <div
                         key={invoice.id}
-                        className="flex justify-between items-center p-4 bg-card border rounded-lg"
+                        className="flex justify-between items-center p-4 bg-background border rounded-lg"
                     >
                         <div>
                             <p className="font-semibold">{invoice.customer}</p>
@@ -21,6 +21,8 @@ export default function InvoicesPage() {
                         </Link>
                     </div>
                 ))}
+
+
             </div>
         </main>
     );

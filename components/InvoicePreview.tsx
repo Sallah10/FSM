@@ -11,7 +11,7 @@ interface Invoice {
 
 export default function InvoicePreview({ invoice }: { invoice: Invoice }) {
     return (
-        <Card className="bg-card text-card-foreground">
+        <Card className="bg-background text-card-foreground">
             <CardHeader>
                 <CardTitle>Invoice #{invoice.id}</CardTitle>
             </CardHeader>
