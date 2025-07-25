@@ -13,6 +13,7 @@ import {
     Menu,
     FileText,
     X,
+    Map,
 } from 'lucide-react';
 import ThemeToggle from '@/components/ThemeToggle';
 import { useState } from 'react';
@@ -26,6 +27,7 @@ const navItems = [
     { label: 'Customers', href: '/customers', icon: <UserPlus size={18} /> },
     { label: 'Invoices', href: '/invoices', icon: <FileText size={18} /> },
     { label: 'Analytics', href: '/analytics', icon: <BarChart size={18} /> },
+    { label: 'Map', href: '/map', icon: <Map size={18} /> },
 ];
 
 export default function SidebarLayout({ children }: { children: React.ReactNode }) {
