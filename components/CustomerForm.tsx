@@ -37,22 +37,22 @@ export default function CustomerForm({
 
     return (
         <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
+            <div className='flex flex-col gap-2'>
                 <Label htmlFor="name">Name</Label>
                 <Input name="name" value={form.name} onChange={handleChange} required />
             </div>
 
-            <div>
+            <div className='flex flex-col gap-2'>
                 <Label htmlFor="email">Email</Label>
                 <Input name="email" value={form.email} onChange={handleChange} required />
             </div>
 
-            <div>
+            <div className='flex flex-col gap-2'>
                 <Label htmlFor="phone">Phone</Label>
                 <Input name="phone" value={form.phone} onChange={handleChange} />
-            </div>
+            </div >
 
-            <div>
+            <div className='flex flex-col gap-2'>
                 <Label htmlFor="address">Address</Label>
                 <Input name="address" value={form.address} onChange={handleChange} />
             </div>
