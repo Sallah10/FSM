@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-// import { Select, SelectGroup } from "@/components/ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 interface JobFormProps {
     onSubmit: (data: unknown) => void;
@@ -26,7 +26,16 @@ export default function JobForm({ onSubmit }: JobFormProps) {
         <form onSubmit={handleSubmit} className="space-y-4">
             <Input name="title" placeholder="Job title" value={form.title} onChange={handleChange} />
             <Input name="customer" placeholder="Customer name" value={form.customer} onChange={handleChange} />
-            {/* <Select><SelectGroup /></Select> */}
+            <Select>
+                <SelectTrigger className='w-[250px] '>
+                    <SelectValue placeholder='Status' />
+                </SelectTrigger>
+                <SelectContent className='backdrop-blur-sm '>
+                    <SelectItem value='completed'>Completed</SelectItem>
+                    <SelectItem value='pending'>Pending</SelectItem>
+                    <SelectItem value='cancalled'>Cancelled</SelectItem>
+                </SelectContent>
+            </Select>
 
             <Textarea name="description" placeholder="Job description" value={form.description} onChange={handleChange} />
             <Button type="submit">Create Job</Button>
