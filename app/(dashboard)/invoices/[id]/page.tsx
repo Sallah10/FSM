@@ -2,8 +2,12 @@ import { invoices } from '@/lib/dummyData';
 import InvoicePreview from '@/components/InvoicePreview';
 import { notFound } from 'next/navigation';
 
-export default function InvoiceDetailsPage({ params }: { params: { id: string } }) {
-    const invoice = invoices.find((i) => i.id === params.id);
+export default async function InvoiceDetailsPage({ params }: { params: Promise<{ id: string }> }) {
+    const invoice = invoices.find(async (i) => i.id === (await params).id);
+    // export default async function CustomerDetailPage({ params, }: { params: Promise<{ id: string }> }) {
+    // // const customer = ( await customers).find((c) => c.id === params.id);
+    // const customer = customers.find(async (c) => c.id === (await params).id);
+
 
     if (!invoice) return notFound();
 

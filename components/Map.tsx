@@ -1,10 +1,12 @@
-// components/Map.tsx
 'use client';
 
-import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
-import MarkerClusterGroup from 'react-leaflet-cluster';
-import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
+import 'leaflet.markercluster/dist/MarkerCluster.css';
+import 'leaflet.markercluster/dist/MarkerCluster.Default.css';
+
+import L from 'leaflet';
+import { MapContainer, TileLayer, useMap } from 'react-leaflet';
+import { useEffect } from 'react';
 
 export interface MarkerData {
     id: string;
@@ -18,7 +20,6 @@ interface MapProps {
     markers: MarkerData[];
 }
 
-// Load different marker icons from public folder
 const iconBase = '/markers';
 
 const getMarkerIcon = (type: MarkerData['type']) => {
@@ -41,30 +42,43 @@ const getMarkerIcon = (type: MarkerData['type']) => {
     });
 };
 
+// Cluster logic
+function MarkerClusters({ markers }: { markers: MarkerData[] }) {
+    const map = useMap();
+
+    useEffect(() => {
+        const markerClusterGroup = L.markerClusterGroup();
+
+        const leafletMarkers = markers.map((marker) =>
+            L.marker([marker.lat, marker.lng], { icon: getMarkerIcon(marker.type) }).bindPopup(
+                marker.label
+            )
+        );
+
+        leafletMarkers.forEach((m) => markerClusterGroup.addLayer(m));
+        map.addLayer(markerClusterGroup);
+
+        return () => {
+            map.removeLayer(markerClusterGroup);
+        };
+    }, [markers, map]);
+
+    return null;
+}
+
 export default function Map({ markers }: MapProps) {
     return (
         <MapContainer
             center={[6.5244, 3.3792]}
             zoom={12}
-            scrollWheelZoom={true}
+            scrollWheelZoom
             className="h-[500px] w-full rounded-md z-0"
         >
             <TileLayer
-                attribution='&copy; <a href="http://osm.org/copyright">OpenStreetMap</a> contributors'
+                attribution='&copy; <a href="https://osm.org/copyright">OpenStreetMap</a>'
                 url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
             />
-
-            <MarkerClusterGroup>
-                {markers.map((marker) => (
-                    <Marker
-                        key={marker.id}
-                        position={[marker.lat, marker.lng]}
-                        icon={getMarkerIcon(marker.type)}
-                    >
-                        <Popup>{marker.label}</Popup>
-                    </Marker>
-                ))}
-            </MarkerClusterGroup>
+            <MarkerClusters markers={markers} />
         </MapContainer>
     );
 }
