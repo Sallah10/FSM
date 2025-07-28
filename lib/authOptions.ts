@@ -1,17 +1,19 @@
-// lib/authOptions.ts
 import GoogleProvider from "next-auth/providers/google";
 import CredentialsProvider from "next-auth/providers/credentials";
 import type { NextAuthOptions } from "next-auth";
-
-// Extend the Session type to include 'id' on user
 declare module "next-auth" {
   interface Session {
     user: {
       id: string;
+      role?: string;
       name?: string | null;
       email?: string | null;
       image?: string | null;
     };
+  }
+  interface User {
+    id: string;
+    role?: string;
   }
 }
 
@@ -28,12 +30,14 @@ export const authOptions: NextAuthOptions = {
         password: { label: "Password", type: "password" },
       },
       async authorize(credentials) {
-        // ✅ Replace with proper DB lookup and hashing
-        if (
-          credentials?.email === "demo@quickset.com" &&
-          credentials.password === "demo123"
-        ) {
-          return { id: "1", name: "Demo User", email: "demo@quickset.com" };
+        if (credentials?.email === "demo@quickset.com" && 
+            credentials.password === "demo123") {
+          return { 
+            id: "1", 
+            name: "Demo User", 
+            email: "demo@quickset.com",
+            role: "admin"
+          };
         }
         return null;
       },
@@ -43,9 +47,19 @@ export const authOptions: NextAuthOptions = {
     signIn: "/auth/login",
   },
   callbacks: {
-    async session({ session, token }) {
-      if (token.sub && session.user) session.user.id = token.sub;
-      return session;
-    },
+  async jwt({ token, user }) {
+    if (user) {
+      token.id = user.id;
+      token.role = user.role;
+    }
+    return token;
   },
+  async session({ session, token }) {
+    if (session.user) {
+      session.user.id = token.id as string;
+      session.user.role = token.role as string;
+    }
+    return session;
+  },
+},
 };

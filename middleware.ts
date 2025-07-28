@@ -14,18 +14,13 @@
 //   return NextResponse.next();
 // }
 import { withAuth } from "next-auth/middleware";
-import { NextResponse } from "next/server";
 
-export default withAuth(
-  function middleware(req) {
-    // ✅ You can now safely access req.nextauth
-    if (req.nextauth.token?.role !== "admin") {
-      return NextResponse.redirect(new URL("/login", req.url));
-    }
-  },
-  {
-    callbacks: {
-      authorized: ({ token }) => !!token, // Only allow signed in users
-    },
+export default withAuth({
+  pages: {
+    signIn: '/auth/login',
   }
-);
+});
+
+export const config = {
+  matcher: ["/dashboard/:path*"],
+};
