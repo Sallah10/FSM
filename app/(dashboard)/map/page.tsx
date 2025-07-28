@@ -1,12 +1,21 @@
-// app/map/page.tsx
 'use client';
 
-import dynamic from "next/dynamic";
-import { useEffect, useState } from "react";
-import { Button } from "@/components/ui/button";
+import dynamic from 'next/dynamic';
+import { useEffect, useState } from 'react';
+import { Button } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
 import type { MarkerData } from "@/components/Map";
 
-const Map = dynamic(() => import("@/components/Map"), { ssr: false });
+
+const Map = dynamic(() => import('@/components/Map'), {
+  ssr: false,
+  loading: () => (
+    <div className="h-[500px] w-full rounded-md bg-gray-100 flex items-center justify-center">
+      <Skeleton className="h-full w-full animate-pulse" />
+    </div>
+  ),
+});
+
 
 const jobs = [
   {
@@ -56,19 +65,37 @@ export default function FullMapPage() {
   const [showJobs, setShowJobs] = useState(true);
   const [showTechs, setShowTechs] = useState(true);
   const [showCustomers, setShowCustomers] = useState(true);
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = useState('');
   const [userLocation, setUserLocation] = useState<null | { lat: number; lng: number }>(null);
+  const [locationError, setLocationError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (typeof window !== "undefined" && navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition((pos) => {
-        setUserLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude });
-      });
+    if (typeof window !== 'undefined' && navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          setUserLocation({
+            lat: pos.coords.latitude,
+            lng: pos.coords.longitude,
+          });
+        },
+        (error) => {
+          setLocationError(
+            error.code === error.PERMISSION_DENIED
+              ? 'Location access was denied'
+              : 'Failed to get location'
+          );
+        },
+        { timeout: 10000 }
+      );
+    } else {
+      setLocationError('Geolocation is not supported');
     }
   }, []);
 
   const filterBySearch = <T extends MarkerData>(arr: T[]): T[] =>
-    arr.filter((item) => item.label.toLowerCase().includes(search.toLowerCase()));
+    arr.filter((item) =>
+      item.label.toLowerCase().includes(search.toLowerCase())
+    );
 
   const markers: MarkerData[] = [
     ...(showJobs ? filterBySearch(jobs) : []),
@@ -77,11 +104,11 @@ export default function FullMapPage() {
     ...(userLocation
       ? [
         {
-          id: "user",
+          id: 'user',
           lat: userLocation.lat,
           lng: userLocation.lng,
-          label: "📍 You Are Here",
-          type: "user" as const,
+          label: '📍 You Are Here',
+          type: 'user' as const,
         },
       ]
       : []),
@@ -94,14 +121,29 @@ export default function FullMapPage() {
         View active technicians, job sites, customers and your location.
       </p>
 
+      {locationError && (
+        <div className="p-3 bg-yellow-50 text-yellow-700 rounded-md text-sm">
+          {locationError} - Showing map without your location
+        </div>
+      )}
+
       <div className="flex flex-wrap gap-2">
-        <Button variant={showJobs ? "default" : "outline"} onClick={() => setShowJobs(!showJobs)}>
+        <Button
+          variant={showJobs ? 'default' : 'outline'}
+          onClick={() => setShowJobs(!showJobs)}
+        >
           Jobs
         </Button>
-        <Button variant={showTechs ? "default" : "outline"} onClick={() => setShowTechs(!showTechs)}>
+        <Button
+          variant={showTechs ? 'default' : 'outline'}
+          onClick={() => setShowTechs(!showTechs)}
+        >
           Technicians
         </Button>
-        <Button variant={showCustomers ? "default" : "outline"} onClick={() => setShowCustomers(!showCustomers)}>
+        <Button
+          variant={showCustomers ? 'default' : 'outline'}
+          onClick={() => setShowCustomers(!showCustomers)}
+        >
           Customers
         </Button>
       </div>
@@ -114,7 +156,14 @@ export default function FullMapPage() {
         onChange={(e) => setSearch(e.target.value)}
       />
 
-      <Map markers={markers} />
+      <Map
+        markers={markers}
+        fallback={
+          <div className="h-[500px] w-full bg-gray-100 rounded-md flex items-center justify-center">
+            Initializing map...
+          </div>
+        }
+      />
     </main>
   );
 }
