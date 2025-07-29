@@ -6,7 +6,10 @@ import { jobs } from "@/lib/dummyData";
 import { notFound } from "next/navigation";
 
 export default async function JobDetailsPage({ params }: { params: Promise<{ id: string }> }) {
-    const job = jobs.find(async (job) => job.id === (await params).id);
+    // const job = jobs.find(async (job) => job.id === (await params).id);
+    const { id } = await params;
+    const job = jobs.find((i) => i.id === id);
+
 
     if (!job) return notFound();
 
