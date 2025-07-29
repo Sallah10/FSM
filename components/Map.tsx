@@ -39,8 +39,8 @@ const getMarkerIcon = (type: MarkerData['type']) => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     delete (L.Icon.Default.prototype as any)._getIconUrl;
     L.Icon.Default.mergeOptions({
-      iconRetinaUrl: `${iconBase}/marker-icon-2x-${color}.png`,
-      iconUrl: `${iconBase}/marker-icon-${color}.png`,
+      iconRetinaUrl: `${iconBase}/marker-icon-${color}.png`,
+      iconUrl: `${iconBase}/marker-icon-2x-${color}.png`,
       shadowUrl: `${iconBase}/marker-shadow.png`,
     });
   }
