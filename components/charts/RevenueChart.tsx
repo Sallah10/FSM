@@ -2,14 +2,15 @@
 
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip } from 'recharts';
 
-const data = [
-    { month: 'Jan', revenue: 3000 },
-    { month: 'Feb', revenue: 4000 },
-    { month: 'Mar', revenue: 5000 },
-    { month: 'Apr', revenue: 3200 },
-];
+interface RevenueChartProps {
+    data: { month: string; revenue: number }[];
+}
 
-export default function RevenueChart() {
+export default function RevenueChart({ data }: RevenueChartProps) {
+    if (!data.length) {
+        return <p className="text-sm text-muted-foreground">No revenue data yet.</p>;
+    }
+
     return (
         <div className="w-full h-[300px]">
             <ResponsiveContainer width="100%" height="100%">

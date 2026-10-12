@@ -1,17 +1,9 @@
 import { notFound } from "next/navigation";
-import { customers } from "@/lib/dummyData";
-
-// Updated type definition
-// interface PageProps {
-//     params: {
-//         id: string;
-//     };
-// }
+import { getCustomer } from "@/lib/db/queries";
 
 export default async function CustomerDetailPage({ params }: { params: Promise<{ id: string }> }) {
-    // const customer = customers.find(async (c) => c.id === (await params).id);
     const { id } = await params;
-    const customer = customers.find((i) => i.id === id);
+    const customer = getCustomer(id);
 
     if (!customer) return notFound();
 

@@ -1,15 +1,10 @@
-
-
-// import { Button } from "@/components/ui/button";
 import { MarkAsCompleteButton } from "@/components/MarkasCompleted";
-import { jobs } from "@/lib/dummyData";
+import { getJob } from "@/lib/db/queries";
 import { notFound } from "next/navigation";
 
 export default async function JobDetailsPage({ params }: { params: Promise<{ id: string }> }) {
-    // const job = jobs.find(async (job) => job.id === (await params).id);
     const { id } = await params;
-    const job = jobs.find((i) => i.id === id);
-
+    const job = getJob(id);
 
     if (!job) return notFound();
 
@@ -22,8 +17,9 @@ export default async function JobDetailsPage({ params }: { params: Promise<{ id:
 
             <div className="space-y-3 text-base">
                 <p><strong>Customer:</strong> {job.customer}</p>
-                <p><strong>Status:</strong> <span className={`font-semibold capitalize ${job.status === 'completed' ? 'text-green-600' : 'text-yellow-500'}`}>{job.status}</span></p>
+                <p><strong>Status:</strong> <span className={`font-semibold capitalize ${job.status === 'completed' ? 'text-green-600' : 'text-yellow-500'}`}>{job.status.replace('_', ' ')}</span></p>
                 <p><strong>Date:</strong> {job.date}</p>
+                {job.technician && <p><strong>Technician:</strong> {job.technician}</p>}
 
                 {job.description && (
                     <div>

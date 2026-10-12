@@ -1,14 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-
-interface Invoice {
-    id: string;
-    customer: string;
-    amount: number;
-    status?: string;
-    date?: string;
-    items?: { name: string; price: number }[];
-}
+import type { Invoice } from '@/lib/types';
 
 export default function InvoicePreview({ invoice }: { invoice: Invoice }) {
     return (

@@ -1,12 +1,10 @@
-import { invoices } from '@/lib/dummyData';
+import { getInvoice } from '@/lib/db/queries';
 import InvoicePreview from '@/components/InvoicePreview';
 import { notFound } from 'next/navigation';
 
 export default async function InvoiceDetailsPage({ params }: { params: Promise<{ id: string }> }) {
-    // const invoice = invoices.find(async (i) => i.id === (await params).id);
     const { id } = await params;
-    const invoice = invoices.find((i) => i.id === id);
-
+    const invoice = getInvoice(id);
 
     if (!invoice) return notFound();
 

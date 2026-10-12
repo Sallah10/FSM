@@ -1,16 +1,22 @@
 'use client';
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import { signIn } from "next-auth/react";
-import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Chrome } from 'lucide-react';
 
+const googleEnabled = process.env.NEXT_PUBLIC_GOOGLE_ENABLED === 'true';
 
-export default function LoginPage() {
+function LoginForm() {
     const router = useRouter();
+    const searchParams = useSearchParams();
+    const justRegistered = searchParams.get('registered') === '1';
+
     const [form, setForm] = useState({ email: "", password: "" });
-    const [isLoading, setIsLoading] = useState(false); // ADDED loading state
+    const [isLoading, setIsLoading] = useState(false);
+    const [error, setError] = useState('');
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         setForm({ ...form, [e.target.name]: e.target.value });
@@ -18,7 +24,8 @@ export default function LoginPage() {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        setIsLoading(true); // ADDED loading state management
+        setIsLoading(true);
+        setError('');
 
         try {
             const result = await signIn("credentials", {
@@ -28,12 +35,13 @@ export default function LoginPage() {
             });
 
             if (result?.error) {
-                alert("Login failed: " + result.error);
+                setError('Invalid email or password');
             } else {
-                router.push("/dashboard"); // CHANGED to useRouter
+                router.push("/dashboard");
+                router.refresh();
             }
         } finally {
-            setIsLoading(false); // ADDED cleanup
+            setIsLoading(false);
         }
     };
 
@@ -42,12 +50,20 @@ export default function LoginPage() {
             <form onSubmit={handleSubmit} className="space-y-4 w-full max-w-sm">
                 <h2 className="text-2xl font-bold text-center">Sign In to QuickSet</h2>
 
+                {justRegistered && (
+                    <p className="text-sm text-center text-green-600">
+                        Account created. You can sign in now.
+                    </p>
+                )}
+
+                {error && <p className="text-red-500 text-sm text-center">{error}</p>}
+
                 <Input
                     name="email"
                     placeholder="Email"
                     value={form.email}
                     onChange={handleChange}
-                    disabled={isLoading} // ADDED disabled state
+                    disabled={isLoading}
                 />
                 <Input
                     name="password"
@@ -55,34 +71,45 @@ export default function LoginPage() {
                     placeholder="Password"
                     value={form.password}
                     onChange={handleChange}
-                    disabled={isLoading} // ADDED disabled state
+                    disabled={isLoading}
                 />
 
-                <Button
-                    type="submit"
-                    className="w-full"
-                    disabled={isLoading} // ADDED disabled state
-                >
+                <Button type="submit" className="w-full" disabled={isLoading}>
                     {isLoading ? "Signing in..." : "Login"}
                 </Button>
 
-                <Button
-                    type="button"
-                    className="w-full mb-3"
-                    onClick={() => signIn("google", { callbackUrl: "/dashboard" })}
-                    disabled={isLoading} // ADDED disabled state
-                >
-                    <Chrome className="mr-2" />
-                    Sign in with Google
-                </Button>
+                {googleEnabled && (
+                    <Button
+                        type="button"
+                        className="w-full mb-3"
+                        onClick={() => signIn("google", { callbackUrl: "/dashboard" })}
+                        disabled={isLoading}
+                    >
+                        <Chrome className="mr-2" />
+                        Sign in with Google
+                    </Button>
+                )}
+
+                <div className="rounded-md border border-border bg-muted/40 p-3 text-xs text-muted-foreground text-center">
+                    Demo login - email <span className="font-mono">demo@quickset.com</span>,
+                    password <span className="font-mono">demo123</span>
+                </div>
 
                 <p className="text-sm text-center text-muted-foreground">
                     Don&apos;t have an account?{" "}
-                    <a href="/auth/signup" className="underline">
+                    <Link href="/auth/signup" className="underline">
                         Sign up
-                    </a>
+                    </Link>
                 </p>
             </form>
         </main>
+    );
+}
+
+export default function LoginPage() {
+    return (
+        <Suspense fallback={null}>
+            <LoginForm />
+        </Suspense>
     );
 }

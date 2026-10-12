@@ -34,20 +34,10 @@ const getMarkerIcon = (type: MarkerData['type']) => {
 
   const color = colorMap[type] || 'blue';
 
-  // Fix for Leaflet icon paths
-  if (typeof window !== 'undefined') {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    delete (L.Icon.Default.prototype as any)._getIconUrl;
-    L.Icon.Default.mergeOptions({
-      iconRetinaUrl: `${iconBase}/marker-icon-${color}.png`,
-      iconUrl: `${iconBase}/marker-icon-2x-${color}.png`,
-      shadowUrl: `${iconBase}/marker-shadow.png`,
-    });
-  }
-
+  // Our marker pngs live in /public/markers, so point Leaflet straight at them.
   return new L.Icon({
-    iconUrl: `${iconBase}/marker-icon-2x-${color}.png`,
-    iconRetinaUrl: `${iconBase}/marker-icon-${color}.png`,
+    iconUrl: `${iconBase}/marker-icon-${color}.png`,
+    iconRetinaUrl: `${iconBase}/marker-icon-2x-${color}.png`,
     shadowUrl: `${iconBase}/marker-shadow.png`,
     iconSize: [25, 41],
     iconAnchor: [12, 41],

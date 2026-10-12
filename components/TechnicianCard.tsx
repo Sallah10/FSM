@@ -3,14 +3,7 @@
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Mail, Phone, User } from 'lucide-react';
-
-interface Technician {
-    id: string;
-    name: string;
-    email: string;
-    role: string;
-    phone?: string;
-}
+import type { Technician } from '@/lib/types';
 
 export default function TechnicianCard({ technician }: { technician: Technician }) {
     return (

@@ -1,33 +1,65 @@
+export type JobStatus = 'pending' | 'in_progress' | 'completed' | 'cancelled';
+export type InvoiceStatus = 'unpaid' | 'paid' | 'overdue';
+
 export interface Job {
   id: string;
   title: string;
-  customer: string;
-  description?: string;
-  status: 'pending' | 'completed' | 'cancelled';
+  description?: string | null;
+  status: JobStatus;
   date: string;
+  customerId?: string | null;
+  customer: string;
+  technicianId?: string | null;
+  technician?: string | null;
+  lat?: number | null;
+  lng?: number | null;
 }
 
 export interface Technician {
   id: string;
   name: string;
   email: string;
-  phone?: string;
+  phone?: string | null;
   role: string;
-}
-
-export interface Invoice {
-  id: string;
-  customer: string;
-  amount: number;
-  status?: string;
-  date?: string;
-  items?: { name: string; price: number }[];
+  lat?: number | null;
+  lng?: number | null;
 }
 
 export interface Customer {
   id: string;
   name: string;
   email: string;
-  phone?: string;
-  address?: string;
+  phone?: string | null;
+  address?: string | null;
+  lat?: number | null;
+  lng?: number | null;
+}
+
+export interface InvoiceItem {
+  name: string;
+  price: number;
+}
+
+export interface Invoice {
+  id: string;
+  customerId?: string | null;
+  customer: string;
+  amount: number;
+  status: InvoiceStatus;
+  date?: string | null;
+  items?: InvoiceItem[];
+}
+
+export interface DashboardStats {
+  totalJobs: number;
+  completedJobs: number;
+  pendingJobs: number;
+  cancelledJobs: number;
+  totalCustomers: number;
+  totalTechnicians: number;
+  paidRevenue: number;
+  outstandingRevenue: number;
+  revenueByMonth: { month: string; revenue: number }[];
+  jobsByStatus: { name: string; value: number }[];
+  jobsPerTechnician: { name: string; jobs: number }[];
 }

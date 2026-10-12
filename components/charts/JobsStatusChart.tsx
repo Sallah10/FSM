@@ -4,13 +4,15 @@ import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
 
 const COLORS = ['#4ade80', '#facc15', '#f87171'];
 
-const data = [
-    { name: 'Completed', value: 8 },
-    { name: 'Pending', value: 3 },
-    { name: 'Cancelled', value: 2 },
-];
+interface JobsStatusChartProps {
+    data: { name: string; value: number }[];
+}
 
-export default function JobsStatusChart() {
+export default function JobsStatusChart({ data }: JobsStatusChartProps) {
+    if (!data.some((entry) => entry.value > 0)) {
+        return <p className="text-sm text-muted-foreground">No jobs to chart yet.</p>;
+    }
+
     return (
         <div className="w-full h-[250px]">
             <ResponsiveContainer width="100%" height="100%">

@@ -1,22 +1,9 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  // /* config options here */
-  // matcher: ["/dashboard/:path*", "/jobs/:path*", "/technicians/:path*", "/invoices/:path*", "/mapPage"],
-webpack: (config, { }) => {
-    config.module.rules.push({
-      test: /\.(png|jpg|jpeg|gif|svg)$/i,
-      issuer: /\.(js|ts)x?$/,
-      use: [
-        {
-          loader: 'ignore-loader',
-        },
-      ],
-    });
-
-    return config;
-  },
-
+  // better-sqlite3 is a native module, so Next must load it from node_modules
+  // instead of trying to bundle it into the server build.
+  serverExternalPackages: ["better-sqlite3"],
 };
 
 export default nextConfig;

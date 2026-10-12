@@ -2,6 +2,7 @@
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 
 export default function SignupPage() {
@@ -20,24 +21,18 @@ export default function SignupPage() {
         setError("");
 
         try {
-            // Basic validation
-            if (!form.email || !form.password || !form.name) {
-                throw new Error("All fields are required");
+            const res = await fetch("/api/signup", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(form),
+            });
+
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok) {
+                throw new Error(data.error ?? "Signup failed");
             }
 
-            if (!form.email.includes("@")) {
-                throw new Error("Please enter a valid email");
-            }
-
-            if (form.password.length < 6) {
-                throw new Error("Password must be at least 6 characters");
-            }
-
-            // Simulate API call
-            await new Promise(resolve => setTimeout(resolve, 1000));
-
-            alert("Demo signup successful. Please log in.");
-            router.push("/auth/login");
+            router.push("/auth/login?registered=1");
         } catch (err) {
             setError(err instanceof Error ? err.message : "Signup failed");
         } finally {
@@ -72,7 +67,7 @@ export default function SignupPage() {
                 <Input
                     name="password"
                     type="password"
-                    placeholder="Password (min 6 chars)"
+                    placeholder="Password (min 8 chars)"
                     value={form.password}
                     onChange={handleChange}
                     disabled={isLoading}
@@ -88,9 +83,9 @@ export default function SignupPage() {
 
                 <p className="text-sm text-center text-muted-foreground">
                     Already have an account?{" "}
-                    <a href="/auth/login" className="underline">
+                    <Link href="/auth/login" className="underline">
                         Login
-                    </a>
+                    </Link>
                 </p>
             </form>
         </main>

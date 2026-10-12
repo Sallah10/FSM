@@ -6,7 +6,7 @@ export default function HomePage() {
     <main className="min-h-screen flex flex-col justify-center items-center text-center p-6">
       <h1 className="text-4xl font-bold mb-4">Welcome to QuickSet</h1>
       <p className="text-muted-foreground mb-6 max-w-md">
-        Simplify job scheduling, manage technicians, and track revenue — all in one intuitive dashboard.
+        Simplify job scheduling, manage technicians, and track revenue - all in one intuitive dashboard.
       </p>
       <div className="flex gap-4">
         <Link href="/auth/signup">

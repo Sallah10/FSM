@@ -16,6 +16,7 @@ import {
     Map,
 } from 'lucide-react';
 import ThemeToggle from '@/components/ThemeToggle';
+import { signOut } from 'next-auth/react';
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -39,18 +40,6 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
             <h2 className="text-xl font-bold mb-6">QuickSet</h2>
             <nav className="space-y-2">
                 {navItems.map((item) => (
-                    // <Link
-                    //     key={item.href}
-                    //     href={item.href}
-                    //     className={cn(
-                    //         'flex items-center gap-3 p-2 rounded-md text-sm font-medium hover:bg-muted transition-all',
-                    //         pathname.startsWith(item.href) && 'bg-muted'
-                    //     )}
-                    //     onClick={() => setMobileOpen(false)}
-                    // >
-                    //     {item.icon}
-                    //     {item.label}
-                    // </Link>
                     <Link
                         key={item.href}
                         href={item.href}
@@ -74,7 +63,10 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
                 ))}
             </nav>
             <div className="mt-auto pt-6">
-                <button className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground">
+                <button
+                    onClick={() => signOut({ callbackUrl: '/' })}
+                    className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
+                >
                     <LogOut size={16} /> Logout
                 </button>
             </div>

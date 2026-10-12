@@ -1,7 +1,9 @@
-import { technicians } from '@/lib/dummyData';
+import { listTechnicians } from '@/lib/db/queries';
 import TechnicianCard from '@/components/TechnicianCard';
 
 export default function TechniciansPage() {
+    const technicians = listTechnicians();
+
     return (
         <main className="p-6 space-y-4">
             <h1 className="text-2xl font-bold">Technicians</h1>
