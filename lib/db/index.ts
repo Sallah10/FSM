@@ -1,32 +1,39 @@
-import fs from 'node:fs';
-import path from 'node:path';
-import Database from 'better-sqlite3';
-import { drizzle, type BetterSQLite3Database } from 'drizzle-orm/better-sqlite3';
+import { neon } from '@neondatabase/serverless';
+import { PGlite } from '@electric-sql/pglite';
+import { drizzle as drizzleNeon } from 'drizzle-orm/neon-http';
+import { drizzle as drizzlePglite } from 'drizzle-orm/pglite';
+import type { PgDatabase, PgQueryResultHKT } from 'drizzle-orm/pg-core';
 import * as schema from './schema';
 
-const dbPath =
-  process.env.DATABASE_PATH ?? path.join(process.cwd(), 'data', 'quickset.db');
+export type Database = PgDatabase<PgQueryResultHKT, typeof schema>;
 
-function createDb(): BetterSQLite3Database<typeof schema> {
-  const dir = path.dirname(dbPath);
-  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-
-  const sqlite = new Database(dbPath);
-  sqlite.pragma('journal_mode = WAL');
-  sqlite.pragma('foreign_keys = ON');
-
-  return drizzle(sqlite, { schema });
+// On Vercel we talk to Neon over HTTP. Locally (and in tests) we run an embedded
+// Postgres (PGlite) so there's nothing to install. Same schema, same queries.
+function createDb(): Database {
+  if (process.env.DATABASE_URL) {
+    return drizzleNeon(neon(process.env.DATABASE_URL), { schema });
+  }
+  const client = new PGlite(process.env.PGLITE_PATH ?? './.pgdata');
+  return drizzlePglite(client, { schema });
 }
 
-// Reuse the connection across hot reloads in dev so we don't leak file handles.
-const globalForDb = globalThis as unknown as {
-  __quicksetDb?: BetterSQLite3Database<typeof schema>;
-};
+const globalForDb = globalThis as unknown as { __quicksetDb?: Database };
 
-export const db = globalForDb.__quicksetDb ?? createDb();
-
-if (process.env.NODE_ENV !== 'production') {
-  globalForDb.__quicksetDb = db;
+function getDb(): Database {
+  if (!globalForDb.__quicksetDb) {
+    globalForDb.__quicksetDb = createDb();
+  }
+  return globalForDb.__quicksetDb;
 }
+
+// Lazily open the connection on first query. This keeps `next build` (which
+// imports route modules but never runs them) from booting PGlite/Neon early.
+export const db = new Proxy({} as Database, {
+  get(_target, prop) {
+    const real = getDb() as unknown as Record<string | symbol, unknown>;
+    const value = real[prop];
+    return typeof value === 'function' ? value.bind(real) : value;
+  },
+});
 
 export { schema };

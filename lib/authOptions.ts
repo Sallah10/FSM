@@ -40,7 +40,7 @@ const providers: NextAuthOptions["providers"] = [
 
       if (!email || !password) return null;
 
-      const user = getUserByEmail(email);
+      const user = await getUserByEmail(email);
       if (!user || !verifyPassword(password, user.passwordHash)) {
         return null;
       }
@@ -76,9 +76,9 @@ export const authOptions: NextAuthOptions = {
     // First Google sign-in: make sure the person exists in our own users table.
     async signIn({ user, account }) {
       if (account?.provider === "google" && user.email) {
-        let dbUser = getUserByEmail(user.email);
+        let dbUser = await getUserByEmail(user.email);
         if (!dbUser) {
-          dbUser = createUser({
+          dbUser = await createUser({
             name: user.name ?? "Google User",
             email: user.email,
             image: user.image ?? null,

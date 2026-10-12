@@ -1,121 +1,111 @@
 'use client';
 
-import dynamic from 'next/dynamic';
 import { useEffect, useState } from 'react';
-import { Button } from '@/components/ui/button';
+import { Search } from 'lucide-react';
+import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
+import { cn } from '@/lib/utils';
 import type { MarkerData } from '@/components/Map';
 
-const Map = dynamic(() => import('@/components/Map'), {
-  ssr: false,
-  loading: () => (
-    <div className="h-[500px] w-full rounded-md bg-gray-100 flex items-center justify-center">
-      <Skeleton className="h-full w-full animate-pulse" />
-    </div>
-  ),
-});
+type MapComponent = React.ComponentType<{
+  markers: MarkerData[];
+  fallback?: React.ReactNode;
+}>;
+
+const LAYERS: { type: MarkerData['type']; label: string; dot: string }[] = [
+  { type: 'job', label: 'Jobs', dot: 'bg-emerald-500' },
+  { type: 'technician', label: 'Technicians', dot: 'bg-blue-500' },
+  { type: 'customer', label: 'Customers', dot: 'bg-red-500' },
+];
 
 export default function MapView({ markers }: { markers: MarkerData[] }) {
-  const [showJobs, setShowJobs] = useState(true);
-  const [showTechs, setShowTechs] = useState(true);
-  const [showCustomers, setShowCustomers] = useState(true);
+  const [Map, setMap] = useState<MapComponent | null>(null);
+  const [visible, setVisible] = useState<Record<string, boolean>>({
+    job: true,
+    technician: true,
+    customer: true,
+  });
   const [search, setSearch] = useState('');
   const [userLocation, setUserLocation] = useState<null | { lat: number; lng: number }>(null);
   const [locationError, setLocationError] = useState<string | null>(null);
 
   useEffect(() => {
+    let active = true;
+    import('@/components/Map').then((mod) => {
+      if (active) setMap(() => mod.default);
+    });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  useEffect(() => {
     if (typeof window !== 'undefined' && navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
-        (pos) => {
-          setUserLocation({
-            lat: pos.coords.latitude,
-            lng: pos.coords.longitude,
-          });
-        },
-        (error) => {
-          setLocationError(
-            error.code === error.PERMISSION_DENIED
-              ? 'Location access was denied'
-              : 'Failed to get location'
-          );
-        },
-        { timeout: 10000 }
+        (pos) => setUserLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+        () => setLocationError('Location unavailable - showing the map without you.'),
+        { timeout: 10000 },
       );
-    } else {
-      setLocationError('Geolocation is not supported');
     }
   }, []);
 
-  const filterBySearch = (arr: MarkerData[]) =>
-    arr.filter((item) => item.label.toLowerCase().includes(search.toLowerCase()));
+  const query = search.trim().toLowerCase();
+  const shown = markers.filter(
+    (marker) => visible[marker.type] && (!query || marker.label.toLowerCase().includes(query)),
+  );
 
-  const visible: MarkerData[] = [
-    ...(showJobs ? filterBySearch(markers.filter((m) => m.type === 'job')) : []),
-    ...(showTechs ? filterBySearch(markers.filter((m) => m.type === 'technician')) : []),
-    ...(showCustomers ? filterBySearch(markers.filter((m) => m.type === 'customer')) : []),
-    ...(userLocation
-      ? [
-        {
-          id: 'user',
-          lat: userLocation.lat,
-          lng: userLocation.lng,
-          label: '📍 You Are Here',
-          type: 'user' as const,
-        },
-      ]
-      : []),
-  ];
+  const displayed: MarkerData[] = userLocation
+    ? [
+      ...shown,
+      { id: 'user', lat: userLocation.lat, lng: userLocation.lng, label: 'Your location', type: 'user' },
+    ]
+    : shown;
 
   return (
-    <main className="p-6 space-y-6">
-      <h1 className="text-2xl font-bold">Service Map Overview</h1>
-      <p className="text-muted-foreground text-sm">
-        View active technicians, job sites, customers and your location.
-      </p>
-
-      {locationError && (
-        <div className="p-3 bg-yellow-50 text-yellow-700 rounded-md text-sm">
-          {locationError} - Showing map without your location
+    <div className="flex flex-col gap-4">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-wrap gap-1">
+          {LAYERS.map((layer) => (
+            <button
+              key={layer.type}
+              type="button"
+              onClick={() =>
+                setVisible((prev) => ({ ...prev, [layer.type]: !prev[layer.type] }))
+              }
+              className={cn(
+                'flex items-center gap-2 rounded-md px-2.5 py-1 text-sm font-medium transition-colors',
+                visible[layer.type]
+                  ? 'bg-accent text-foreground'
+                  : 'text-muted-foreground hover:bg-accent/60',
+              )}
+            >
+              <span className={cn('size-2 rounded-full', visible[layer.type] ? layer.dot : 'bg-muted-foreground/40')} />
+              {layer.label}
+            </button>
+          ))}
         </div>
-      )}
-
-      <div className="flex flex-wrap gap-2">
-        <Button
-          variant={showJobs ? 'default' : 'outline'}
-          onClick={() => setShowJobs(!showJobs)}
-        >
-          Jobs
-        </Button>
-        <Button
-          variant={showTechs ? 'default' : 'outline'}
-          onClick={() => setShowTechs(!showTechs)}
-        >
-          Technicians
-        </Button>
-        <Button
-          variant={showCustomers ? 'default' : 'outline'}
-          onClick={() => setShowCustomers(!showCustomers)}
-        >
-          Customers
-        </Button>
+        <div className="relative sm:w-64">
+          <Search className="absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            placeholder="Search the map…"
+            className="pl-8"
+          />
+        </div>
       </div>
 
-      <input
-        type="text"
-        placeholder="Search jobs or technicians..."
-        className="w-full max-w-sm border border-border p-2 rounded-md text-sm"
-        value={search}
-        onChange={(e) => setSearch(e.target.value)}
-      />
+      {locationError ? (
+        <p className="text-xs text-muted-foreground">{locationError}</p>
+      ) : null}
 
-      <Map
-        markers={visible}
-        fallback={
-          <div className="h-[500px] w-full bg-gray-100 rounded-md flex items-center justify-center">
-            Initializing map...
-          </div>
-        }
-      />
-    </main>
+      <div className="overflow-hidden rounded-lg border">
+        {Map ? (
+          <Map markers={displayed} fallback={<Skeleton className="h-[520px] w-full" />} />
+        ) : (
+          <Skeleton className="h-[520px] w-full" />
+        )}
+      </div>
+    </div>
   );
 }

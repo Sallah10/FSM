@@ -10,7 +10,7 @@ export async function GET() {
   if (!session?.user) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
-  return NextResponse.json({ customers: listCustomers() });
+  return NextResponse.json({ customers: await listCustomers() });
 }
 
 export async function POST(req: Request) {
@@ -29,7 +29,7 @@ export async function POST(req: Request) {
   }
 
   return NextResponse.json(
-    { customer: createCustomer(parsed.data) },
+    { customer: await createCustomer(parsed.data) },
     { status: 201 },
   );
 }

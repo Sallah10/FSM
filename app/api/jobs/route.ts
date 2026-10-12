@@ -10,7 +10,7 @@ export async function GET() {
   if (!session?.user) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
-  return NextResponse.json({ jobs: listJobs() });
+  return NextResponse.json({ jobs: await listJobs() });
 }
 
 export async function POST(req: Request) {
@@ -28,5 +28,5 @@ export async function POST(req: Request) {
     );
   }
 
-  return NextResponse.json({ job: createJob(parsed.data) }, { status: 201 });
+  return NextResponse.json({ job: await createJob(parsed.data) }, { status: 201 });
 }

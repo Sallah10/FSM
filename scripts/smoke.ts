@@ -117,6 +117,21 @@ async function main() {
     `got ${dashboard.status}`,
   );
 
+  // 5b. Key pages render for an authed user.
+  for (const path of [
+    "/jobs",
+    "/customers",
+    "/technicians",
+    "/invoices",
+    "/analytics",
+    "/map",
+  ]) {
+    const res = await fetch(`${baseUrl}${path}`, {
+      headers: { Cookie: jar.header() },
+    });
+    check(`GET ${path} returns 200`, res.status === 200, `got ${res.status}`);
+  }
+
   // 6. Authed data endpoints.
   const jobsRes = await fetch(`${baseUrl}/api/jobs`, {
     headers: { Cookie: jar.header() },
@@ -180,6 +195,40 @@ async function main() {
     });
     const patched = (await patchRes.json()) as { job?: { status: string } };
     check("PATCH marks the job completed", patched.job?.status === "completed");
+  }
+
+  // 7b. Detail pages render for existing records.
+  const detailChecks: { path: string; id: string | undefined }[] = [
+    { path: "/jobs", id: created.job?.id },
+    { path: "/customers", id: firstCustomerId },
+  ];
+
+  const invoicesRes = await fetch(`${baseUrl}/api/invoices`, {
+    headers: { Cookie: jar.header() },
+  });
+  const invoicesJson = (await invoicesRes.json()) as {
+    invoices: { id: string }[];
+  };
+  detailChecks.push({ path: "/invoices", id: invoicesJson.invoices?.[0]?.id });
+
+  const techsRes = await fetch(`${baseUrl}/api/technicians`, {
+    headers: { Cookie: jar.header() },
+  });
+  const techsJson = (await techsRes.json()) as {
+    technicians: { id: string }[];
+  };
+  detailChecks.push({ path: "/technicians", id: techsJson.technicians?.[0]?.id });
+
+  for (const { path, id } of detailChecks) {
+    if (!id) continue;
+    const res = await fetch(`${baseUrl}${path}/${id}`, {
+      headers: { Cookie: jar.header() },
+    });
+    check(
+      `GET ${path}/[id] returns 200`,
+      res.status === 200,
+      `got ${res.status}`,
+    );
   }
 
   // 8. Validation + duplicate-signup guards.

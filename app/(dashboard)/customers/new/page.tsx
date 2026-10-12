@@ -1,36 +1,20 @@
-'use client';
-
-import { useState } from 'react';
-import CustomerForm from '@/components/CustomerForm';
-import { useRouter } from 'next/navigation';
+import { PageHeader } from '@/components/layout/PageHeader';
+import { CustomerForm } from '@/components/forms/CustomerForm';
+import { Card, CardContent } from '@/components/ui/card';
 
 export default function NewCustomerPage() {
-    const router = useRouter();
-    const [error, setError] = useState('');
-
-    const handleSubmit = async (data: unknown) => {
-        setError('');
-        const res = await fetch('/api/customers', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(data),
-        });
-
-        if (!res.ok) {
-            const body = await res.json().catch(() => ({}));
-            setError(body.error ?? 'Could not save customer');
-            return;
-        }
-
-        router.push('/customers');
-        router.refresh();
-    };
-
-    return (
-        <main className="p-6 max-w-xl mx-auto">
-            <h1 className="text-2xl font-bold mb-4">Add New Customer</h1>
-            {error && <p className="text-red-500 text-sm mb-3">{error}</p>}
-            <CustomerForm onSubmit={handleSubmit} />
-        </main>
-    );
+  return (
+    <div className="mx-auto flex w-full max-w-2xl flex-col gap-6">
+      <PageHeader
+        title="New customer"
+        description="Add a customer so you can log jobs and invoices for them."
+        breadcrumbs={[{ label: 'Customers', href: '/customers' }, { label: 'New' }]}
+      />
+      <Card>
+        <CardContent>
+          <CustomerForm />
+        </CardContent>
+      </Card>
+    </div>
+  );
 }

@@ -1,4 +1,5 @@
 export type JobStatus = 'pending' | 'in_progress' | 'completed' | 'cancelled';
+export type JobPriority = 'low' | 'normal' | 'high' | 'urgent';
 export type InvoiceStatus = 'unpaid' | 'paid' | 'overdue';
 
 export interface Job {
@@ -6,6 +7,7 @@ export interface Job {
   title: string;
   description?: string | null;
   status: JobStatus;
+  priority: JobPriority;
   date: string;
   customerId?: string | null;
   customer: string;
@@ -13,6 +15,14 @@ export interface Job {
   technician?: string | null;
   lat?: number | null;
   lng?: number | null;
+}
+
+export interface JobEvent {
+  id: string;
+  jobId: string;
+  type: string;
+  message: string;
+  createdAt: string;
 }
 
 export interface Technician {

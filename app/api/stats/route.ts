@@ -9,5 +9,5 @@ export async function GET() {
   if (!session?.user) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
-  return NextResponse.json({ stats: getStats() });
+  return NextResponse.json({ stats: await getStats() });
 }

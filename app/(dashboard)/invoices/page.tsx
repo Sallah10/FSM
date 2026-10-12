@@ -1,45 +1,27 @@
-import { listInvoices } from '@/lib/db/queries';
 import Link from 'next/link';
+import { Plus } from 'lucide-react';
+import { listInvoices } from '@/lib/db/queries';
+import { PageHeader } from '@/components/layout/PageHeader';
+import { InvoicesTable } from '@/components/invoices/InvoicesTable';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 
-export default function InvoicesPage() {
-    const invoices = listInvoices();
+export default async function InvoicesPage() {
+  const invoices = await listInvoices();
 
-    return (
-        <main className="p-6 max-w-4xl mx-auto space-y-6">
-            <h1 className="text-3xl font-bold text-primary">Invoices</h1>
-
-            {invoices.length === 0 ? (
-                <p className="text-muted-foreground">No invoices yet.</p>
-            ) : (
-                <div className="space-y-4">
-                    {invoices.map((invoice) => (
-                        <div
-                            key={invoice.id}
-                            className="flex justify-between items-center p-4 border rounded-xl shadow-sm hover:shadow-md transition-all bg-background"
-                        >
-                            <div>
-                                <h3 className="text-lg font-semibold">{invoice.customer}</h3>
-                                <p className="text-muted-foreground text-sm">
-                                    ₦{invoice.amount.toLocaleString()}  • {invoice.date}
-                                </p>
-                                <Badge
-                                    className={`mt-1 ${invoice.status === 'paid'
-                                        ? 'bg-green-100 text-green-800'
-                                        : 'bg-yellow-100 text-yellow-800'
-                                        }`}
-                                >
-                                    {invoice.status}
-                                </Badge>
-                            </div>
-                            <Link href={`/invoices/${invoice.id}`}>
-                                <Button variant="outline" size="sm">View</Button>
-                            </Link>
-                        </div>
-                    ))}
-                </div>
-            )}
-        </main>
-    );
+  return (
+    <div className="flex flex-col gap-6">
+      <PageHeader
+        title="Invoices"
+        description="Billing, payments and what's still outstanding."
+        actions={
+          <Button asChild>
+            <Link href="/invoices/new">
+              <Plus /> New invoice
+            </Link>
+          </Button>
+        }
+      />
+      <InvoicesTable invoices={invoices} />
+    </div>
+  );
 }
