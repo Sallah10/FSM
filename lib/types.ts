@@ -1,6 +1,31 @@
 export type JobStatus = 'pending' | 'in_progress' | 'completed' | 'cancelled';
 export type JobPriority = 'low' | 'normal' | 'high' | 'urgent';
 export type InvoiceStatus = 'unpaid' | 'paid' | 'overdue';
+export type UserRole = 'admin' | 'dispatcher' | 'technician';
+export type InviteStatus = 'pending' | 'accepted' | 'revoked';
+
+export interface Organization {
+  id: string;
+  name: string;
+  createdAt?: string;
+}
+
+export interface OrgMember {
+  id: string;
+  name: string;
+  email: string;
+  role: UserRole;
+}
+
+export interface Invite {
+  id: string;
+  orgId: string;
+  email: string;
+  role: UserRole;
+  token: string;
+  status: InviteStatus;
+  createdAt: string;
+}
 
 export interface Job {
   id: string;

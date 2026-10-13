@@ -7,6 +7,7 @@ import {
   listJobEvents,
   listTechnicians,
 } from '@/lib/db/queries';
+import { requireSession } from '@/lib/auth/session';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { ConfirmDelete } from '@/components/ConfirmDelete';
 import { EditJobDialog } from '@/components/jobs/EditJobDialog';
@@ -21,14 +22,15 @@ export default async function JobDetailPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
+  const { orgId } = await requireSession();
   const { id } = await params;
-  const job = await getJob(id);
+  const job = await getJob(orgId, id);
   if (!job) notFound();
 
   const [events, technicians, customers] = await Promise.all([
-    listJobEvents(id),
-    listTechnicians(),
-    listCustomers(),
+    listJobEvents(orgId, id),
+    listTechnicians(orgId),
+    listCustomers(orgId),
   ]);
 
   const details: { label: string; value: React.ReactNode }[] = [

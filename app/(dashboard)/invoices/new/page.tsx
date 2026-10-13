@@ -1,4 +1,5 @@
 import { listCustomers } from '@/lib/db/queries';
+import { requireSession } from '@/lib/auth/session';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { InvoiceForm } from '@/components/forms/InvoiceForm';
 import { Card, CardContent } from '@/components/ui/card';
@@ -8,8 +9,9 @@ export default async function NewInvoicePage({
 }: {
   searchParams: Promise<{ customerId?: string }>;
 }) {
+  const { orgId } = await requireSession();
   const [customers, { customerId }] = await Promise.all([
-    listCustomers(),
+    listCustomers(orgId),
     searchParams,
   ]);
 

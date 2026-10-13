@@ -8,6 +8,7 @@ import {
   Wrench,
 } from 'lucide-react';
 import { getStats, listInvoices, listJobs } from '@/lib/db/queries';
+import { requireSession } from '@/lib/auth/session';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { StatCard } from '@/components/dashboard/StatCard';
 import RevenueChart from '@/components/charts/RevenueChart';
@@ -18,10 +19,12 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { formatCurrency, formatDate } from '@/lib/format';
 
 export default async function DashboardPage() {
+  const { orgId } = await requireSession();
+
   const [stats, jobs, invoices] = await Promise.all([
-    getStats(),
-    listJobs(),
-    listInvoices(),
+    getStats(orgId),
+    listJobs(orgId),
+    listInvoices(orgId),
   ]);
 
   const recent = jobs.slice(0, 6);

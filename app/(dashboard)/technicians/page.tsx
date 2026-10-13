@@ -1,14 +1,16 @@
 import Link from 'next/link';
 import { Plus } from 'lucide-react';
 import { listJobs, listTechnicians } from '@/lib/db/queries';
+import { requireSession } from '@/lib/auth/session';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { TechniciansTable } from '@/components/technicians/TechniciansTable';
 import { Button } from '@/components/ui/button';
 
 export default async function TechniciansPage() {
+  const { orgId } = await requireSession();
   const [technicians, jobs] = await Promise.all([
-    listTechnicians(),
-    listJobs(),
+    listTechnicians(orgId),
+    listJobs(orgId),
   ]);
 
   const jobCounts: Record<string, number> = {};

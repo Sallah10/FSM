@@ -5,18 +5,42 @@ import {
   doublePrecision,
 } from 'drizzle-orm/pg-core';
 
+// A workspace/tenant. Every business that signs up gets its own organization,
+// and all customers/technicians/jobs/invoices belong to exactly one.
+export const organizations = pgTable('organizations', {
+  id: text('id').primaryKey(),
+  name: text('name').notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+// role: admin | dispatcher | technician
 export const users = pgTable('users', {
   id: text('id').primaryKey(),
   name: text('name').notNull(),
   email: text('email').notNull().unique(),
   passwordHash: text('password_hash'),
   role: text('role').notNull().default('dispatcher'),
+  orgId: text('org_id').references(() => organizations.id, { onDelete: 'cascade' }),
   image: text('image'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+// status: pending | accepted | revoked
+export const invites = pgTable('invites', {
+  id: text('id').primaryKey(),
+  orgId: text('org_id')
+    .notNull()
+    .references(() => organizations.id, { onDelete: 'cascade' }),
+  email: text('email').notNull(),
+  role: text('role').notNull().default('technician'),
+  token: text('token').notNull().unique(),
+  status: text('status').notNull().default('pending'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });
 
 export const customers = pgTable('customers', {
   id: text('id').primaryKey(),
+  orgId: text('org_id').references(() => organizations.id, { onDelete: 'cascade' }),
   name: text('name').notNull(),
   email: text('email').notNull(),
   phone: text('phone'),
@@ -28,6 +52,7 @@ export const customers = pgTable('customers', {
 
 export const technicians = pgTable('technicians', {
   id: text('id').primaryKey(),
+  orgId: text('org_id').references(() => organizations.id, { onDelete: 'cascade' }),
   name: text('name').notNull(),
   email: text('email').notNull(),
   phone: text('phone'),
@@ -40,6 +65,7 @@ export const technicians = pgTable('technicians', {
 // status: pending | in_progress | completed | cancelled
 export const jobs = pgTable('jobs', {
   id: text('id').primaryKey(),
+  orgId: text('org_id').references(() => organizations.id, { onDelete: 'cascade' }),
   title: text('title').notNull(),
   description: text('description'),
   status: text('status').notNull().default('pending'),
@@ -55,6 +81,7 @@ export const jobs = pgTable('jobs', {
 // status: unpaid | paid | overdue
 export const invoices = pgTable('invoices', {
   id: text('id').primaryKey(),
+  orgId: text('org_id').references(() => organizations.id, { onDelete: 'cascade' }),
   customerId: text('customer_id').references(() => customers.id, { onDelete: 'set null' }),
   amount: doublePrecision('amount').notNull(),
   status: text('status').notNull().default('unpaid'),
@@ -82,7 +109,9 @@ export const jobEvents = pgTable('job_events', {
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });
 
+export type OrganizationRow = typeof organizations.$inferSelect;
 export type UserRow = typeof users.$inferSelect;
+export type InviteRow = typeof invites.$inferSelect;
 export type CustomerRow = typeof customers.$inferSelect;
 export type TechnicianRow = typeof technicians.$inferSelect;
 export type JobRow = typeof jobs.$inferSelect;

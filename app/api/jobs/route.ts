@@ -1,23 +1,19 @@
 import { NextResponse } from 'next/server';
 import { createJob, listJobs } from '@/lib/db/queries';
-import { getApiSession } from '@/lib/auth/session';
+import { authorize } from '@/lib/auth/session';
 import { createJobSchema } from '@/lib/validation';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
-  const session = await getApiSession();
-  if (!session?.user) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
-  return NextResponse.json({ jobs: await listJobs() });
+  const auth = await authorize();
+  if (!auth.ok) return auth.response;
+  return NextResponse.json({ jobs: await listJobs(auth.context.orgId) });
 }
 
 export async function POST(req: Request) {
-  const session = await getApiSession();
-  if (!session?.user) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+  const auth = await authorize('admin', 'dispatcher');
+  if (!auth.ok) return auth.response;
 
   const body = await req.json().catch(() => null);
   const parsed = createJobSchema.safeParse(body);
@@ -28,5 +24,8 @@ export async function POST(req: Request) {
     );
   }
 
-  return NextResponse.json({ job: await createJob(parsed.data) }, { status: 201 });
+  return NextResponse.json(
+    { job: await createJob(auth.context.orgId, parsed.data) },
+    { status: 201 },
+  );
 }

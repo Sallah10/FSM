@@ -1,12 +1,14 @@
 import Link from 'next/link';
 import { Plus } from 'lucide-react';
 import { listJobs } from '@/lib/db/queries';
+import { requireSession } from '@/lib/auth/session';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { JobsTable } from '@/components/jobs/JobsTable';
 import { Button } from '@/components/ui/button';
 
 export default async function JobsPage() {
-  const jobs = await listJobs();
+  const { orgId } = await requireSession();
+  const jobs = await listJobs(orgId);
 
   return (
     <div className="flex flex-col gap-6">

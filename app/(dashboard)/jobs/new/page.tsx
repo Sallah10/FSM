@@ -1,12 +1,14 @@
 import { listCustomers, listTechnicians } from '@/lib/db/queries';
+import { requireSession } from '@/lib/auth/session';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { JobForm } from '@/components/forms/JobForm';
 import { Card, CardContent } from '@/components/ui/card';
 
 export default async function NewJobPage() {
+  const { orgId } = await requireSession();
   const [customers, technicians] = await Promise.all([
-    listCustomers(),
-    listTechnicians(),
+    listCustomers(orgId),
+    listTechnicians(orgId),
   ]);
 
   return (

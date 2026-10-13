@@ -1,23 +1,19 @@
 import { NextResponse } from 'next/server';
 import { createCustomer, listCustomers } from '@/lib/db/queries';
-import { getApiSession } from '@/lib/auth/session';
+import { authorize } from '@/lib/auth/session';
 import { createCustomerSchema } from '@/lib/validation';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
-  const session = await getApiSession();
-  if (!session?.user) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
-  return NextResponse.json({ customers: await listCustomers() });
+  const auth = await authorize();
+  if (!auth.ok) return auth.response;
+  return NextResponse.json({ customers: await listCustomers(auth.context.orgId) });
 }
 
 export async function POST(req: Request) {
-  const session = await getApiSession();
-  if (!session?.user) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+  const auth = await authorize('admin', 'dispatcher');
+  if (!auth.ok) return auth.response;
 
   const body = await req.json().catch(() => null);
   const parsed = createCustomerSchema.safeParse(body);
@@ -29,7 +25,7 @@ export async function POST(req: Request) {
   }
 
   return NextResponse.json(
-    { customer: await createCustomer(parsed.data) },
+    { customer: await createCustomer(auth.context.orgId, parsed.data) },
     { status: 201 },
   );
 }

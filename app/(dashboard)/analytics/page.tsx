@@ -1,4 +1,5 @@
 import { getStats } from '@/lib/db/queries';
+import { requireSession } from '@/lib/auth/session';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { StatCard } from '@/components/dashboard/StatCard';
 import RevenueChart from '@/components/charts/RevenueChart';
@@ -8,7 +9,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { formatCurrency } from '@/lib/format';
 
 export default async function AnalyticsPage() {
-  const stats = await getStats();
+  const { orgId } = await requireSession();
+  const stats = await getStats(orgId);
 
   const completionRate =
     stats.totalJobs > 0

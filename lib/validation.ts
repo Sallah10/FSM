@@ -67,10 +67,27 @@ export const updateInvoiceSchema = z.object({
   status: invoiceStatusSchema,
 });
 
+export const userRoleSchema = z.enum(['admin', 'dispatcher', 'technician']);
+
 export const signupSchema = z.object({
   name: z.string().trim().min(2).max(120),
   email: z.string().trim().email(),
   password: z.string().min(8).max(128),
+  orgName: z.string().trim().min(2).max(120).optional(),
+});
+
+export const inviteSchema = z.object({
+  email: z.string().trim().email(),
+  role: userRoleSchema.default('technician'),
+});
+
+export const acceptInviteSchema = z.object({
+  name: z.string().trim().min(2).max(120),
+  password: z.string().min(8).max(128),
+});
+
+export const updateMemberRoleSchema = z.object({
+  role: userRoleSchema,
 });
 
 export type CreateJobInput = z.infer<typeof createJobSchema>;

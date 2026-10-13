@@ -3,6 +3,7 @@ import { CheckCircle2, Clock } from 'lucide-react';
 import { authOptions } from '@/lib/authOptions';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { AppearanceSettings } from '@/components/settings/AppearanceSettings';
+import { OrganizationSettings } from '@/components/settings/OrganizationSettings';
 import {
   Card,
   CardContent,
@@ -112,11 +113,7 @@ export default async function SettingsPage() {
               <CardDescription>Your team and workspace.</CardDescription>
             </CardHeader>
             <CardContent className="flex flex-col gap-4">
-              <Planned>
-                Multi-tenant organizations are coming: the first person to sign in
-                becomes the workspace admin and can invite dispatchers and field
-                technicians, each with their own scoped access.
-              </Planned>
+              <OrganizationSettings />
             </CardContent>
           </Card>
         </TabsContent>

@@ -1,12 +1,14 @@
 import Link from 'next/link';
 import { Plus } from 'lucide-react';
 import { listCustomers } from '@/lib/db/queries';
+import { requireSession } from '@/lib/auth/session';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { CustomersTable } from '@/components/customers/CustomersTable';
 import { Button } from '@/components/ui/button';
 
 export default async function CustomersPage() {
-  const customers = await listCustomers();
+  const { orgId } = await requireSession();
+  const customers = await listCustomers(orgId);
 
   return (
     <div className="flex flex-col gap-6">

@@ -17,7 +17,8 @@ Built with **Next.js 15 (App Router) · React 19 · TypeScript · Tailwind v4 ·
 - **Invoices** - line-item invoices with a printable preview, inline status changes, and full CRUD.
 - **Analytics** - revenue by month, jobs by status, and jobs-per-technician charts, all driven by real query results.
 - **Service map** - Leaflet map with clustered, colour-coded markers for jobs, technicians and customers, plus layer toggles, search and "locate me".
-- **Settings** - account profile, appearance (light / dark / system) and a security panel; organization + two-factor settings are scaffolded for the multi-tenant roadmap.
+- **Teams & roles** - every sign-up creates its own organization and becomes its admin. Admins invite teammates by email (a copyable link) as **dispatcher** or **technician**, change roles, and remove members. All data is scoped to the organization.
+- **Settings** - account profile, appearance (light / dark / system), a security panel, and a working **Organization** tab for members, roles and invites. Two-factor settings are scaffolded for the roadmap.
 - **UI** - a consistent, data-dense design system with light/dark mode, a responsive sidebar and a mobile drawer, plus toast feedback on every write. Loading skeletons on every route, a friendly 404 with an auto-redirect countdown, show/hide password fields, and a confirm step before signing out.
 
 ## Tech stack
@@ -68,11 +69,13 @@ To point at a hosted Postgres (e.g. Neon) instead, set `DATABASE_URL` in `.env.l
 ### Demo login
 
 ```
-email:    demo@quickset.com
+email:    demo@quickset.com      (admin)
 password: demo123
 ```
 
-Or hit **Sign up** to create a real account (passwords are stored as salted scrypt hashes).
+The demo organization also seeds a teammate per role - `dispatcher@quickset.com` and `technician@quickset.com`, both with the password `demo123` - so you can see how access differs.
+
+Or hit **Sign up** to create a real account and your own fresh organization (passwords are stored as salted scrypt hashes).
 
 ## Scripts
 
@@ -99,7 +102,7 @@ Or hit **Sign up** to create a real account (passwords are stored as salted scry
 
 ## API
 
-All data endpoints require a signed-in session (`401` otherwise).
+All data endpoints require a signed-in session (`401` when signed out) and are scoped to the caller's organization. Write endpoints also enforce roles (`403` for a role that is not allowed).
 
 | Method                       | Route                                | Purpose                                      |
 | ---------------------------- | ------------------------------------ | -------------------------------------------- |
@@ -107,39 +110,47 @@ All data endpoints require a signed-in session (`401` otherwise).
 | `GET` / `PATCH` / `DELETE`   | `/api/jobs/:id`                      | Fetch / update / delete a job                |
 | `GET` / `POST`               | `/api/customers`                     | List / create customers                      |
 | `GET` / `PATCH` / `DELETE`   | `/api/customers/:id`                 | Fetch / update / delete a customer           |
-| `GET` / `POST`               | `/api/technicians`                   | List / create technicians                    |
+| `GET` / `POST`               | `/api/technicians`                   | List / create technicians (writes: admin)    |
 | `GET` / `PATCH` / `DELETE`   | `/api/technicians/:id`               | Fetch / update / delete a technician         |
 | `GET` / `POST`               | `/api/invoices`                      | List / create invoices                       |
 | `GET` / `PATCH` / `DELETE`   | `/api/invoices/:id`                  | Fetch / update status / delete an invoice    |
 | `GET`                        | `/api/stats`                         | Aggregated dashboard metrics                 |
-| `POST`                       | `/api/signup`                        | Register a new account                       |
+| `GET` / `PATCH`              | `/api/org`                           | Organization + members + invites / rename    |
+| `PATCH` / `DELETE`           | `/api/org/members/:id`               | Change a member's role / remove a member     |
+| `GET` / `POST`               | `/api/org/invites`                   | List / create invites (admin)                |
+| `DELETE`                     | `/api/org/invites/:id`               | Revoke an invite (admin)                     |
+| `GET` / `POST`               | `/api/invite/:token`                 | Public: view / accept an invite              |
+| `POST`                       | `/api/signup`                        | Register a new account + organization        |
 
 ## Architecture
 
 ```
 app/
   (dashboard)/        authenticated area (shared app shell, force-dynamic)
-  api/                route handlers (REST, Zod-validated, session-guarded)
+  api/                route handlers (REST, Zod-validated, session + role-guarded)
   auth/               login + signup screens
+  invite/[token]/     public invite-acceptance page
 lib/
   db/                 Drizzle schema, driver selection, queries, migrate, seed
-  auth/               password hashing + session helper
+  auth/               password hashing + session/role helpers
   authOptions.ts      NextAuth configuration
 components/
   layout/             app shell, page header, dialogs
   forms/              react-hook-form forms + field primitives
+  settings/           appearance + organization settings
+  invite/             invite-acceptance form
   charts/             recharts wrappers
   ui/                 design-system primitives
 middleware.ts         protects every dashboard route
 ```
 
-Reads happen in Server Components straight from Postgres; writes go through validated Route Handlers and refresh the page. The map and charts are fed by the same query layer, so every screen reflects the database.
+Reads happen in Server Components straight from Postgres, scoped to the session's organization; writes go through validated Route Handlers that enforce the caller's role and refresh the page. The map and charts are fed by the same query layer, so every screen reflects the database.
 
 ## Verification
 
 - `npm run lint` - no warnings or errors
 - `npm run typecheck` - clean
-- `npm test` - 15 tests across 4 files
-- `npm run smoke` - 27 HTTP checks (auth, page rendering, CRUD, validation)
-- Production build - 31 routes, 103 kB shared JS
+- `npm test` - 16 tests across 4 files
+- `npm run smoke` - 37 HTTP checks (auth, page rendering, CRUD, validation, org invites, role enforcement)
+- Production build - 40 routes, 103 kB shared JS
 - `npm audit --omit=dev` - **0 vulnerabilities** in production dependencies

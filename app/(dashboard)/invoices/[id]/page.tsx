@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { Trash2 } from 'lucide-react';
 import { getInvoice } from '@/lib/db/queries';
+import { requireSession } from '@/lib/auth/session';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { ConfirmDelete } from '@/components/ConfirmDelete';
 import { InvoiceStatusSelect } from '@/components/invoices/InvoiceStatusSelect';
@@ -25,8 +26,9 @@ export default async function InvoiceDetailPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
+  const { orgId } = await requireSession();
   const { id } = await params;
-  const invoice = await getInvoice(id);
+  const invoice = await getInvoice(orgId, id);
   if (!invoice) notFound();
 
   return (

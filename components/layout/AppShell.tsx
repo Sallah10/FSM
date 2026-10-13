@@ -20,7 +20,12 @@ import { cn } from '@/lib/utils';
 import { UserMenu } from '@/components/layout/UserMenu';
 import ThemeToggle from '@/components/ThemeToggle';
 
-type NavItem = { label: string; href: string; icon: LucideIcon };
+type NavItem = {
+  label: string;
+  href: string;
+  icon: LucideIcon;
+  roles?: string[];
+};
 type NavGroup = { label: string; items: NavItem[] };
 
 const groups: NavGroup[] = [
@@ -36,16 +41,35 @@ const groups: NavGroup[] = [
     label: 'Directory',
     items: [
       { label: 'Customers', href: '/customers', icon: Users },
-      { label: 'Technicians', href: '/technicians', icon: Wrench },
+      {
+        label: 'Technicians',
+        href: '/technicians',
+        icon: Wrench,
+        roles: ['admin'],
+      },
     ],
   },
   {
     label: 'Finance',
-    items: [{ label: 'Invoices', href: '/invoices', icon: FileText }],
+    items: [
+      {
+        label: 'Invoices',
+        href: '/invoices',
+        icon: FileText,
+        roles: ['admin', 'dispatcher'],
+      },
+    ],
   },
   {
     label: 'Insights',
-    items: [{ label: 'Analytics', href: '/analytics', icon: BarChart3 }],
+    items: [
+      {
+        label: 'Analytics',
+        href: '/analytics',
+        icon: BarChart3,
+        roles: ['admin', 'dispatcher'],
+      },
+    ],
   },
   {
     label: 'Account',
@@ -67,12 +91,28 @@ function Brand() {
   );
 }
 
-function Nav({ onNavigate }: { onNavigate?: () => void }) {
+function Nav({
+  role,
+  onNavigate,
+}: {
+  role?: string | null;
+  onNavigate?: () => void;
+}) {
   const pathname = usePathname();
+
+  // Hide areas the current role can't use; API routes enforce this too.
+  const visibleGroups = groups
+    .map((group) => ({
+      ...group,
+      items: group.items.filter(
+        (item) => !item.roles || (role ? item.roles.includes(role) : false),
+      ),
+    }))
+    .filter((group) => group.items.length > 0);
 
   return (
     <nav className="flex flex-col gap-5">
-      {groups.map((group) => (
+      {visibleGroups.map((group) => (
         <div key={group.label} className="flex flex-col gap-1">
           <p className="px-2 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
             {group.label}
@@ -127,7 +167,7 @@ export default function AppShell({
           <Brand />
         </div>
         <div className="flex-1 overflow-y-auto px-2 py-4">
-          <Nav />
+          <Nav role={user.role} />
         </div>
         <div className="border-t border-sidebar-border p-2">
           <div className="flex items-center gap-1">
@@ -177,7 +217,7 @@ export default function AppShell({
               </button>
             </div>
             <div className="flex-1 overflow-y-auto px-2 py-4">
-              <Nav onNavigate={() => setMobileOpen(false)} />
+              <Nav role={user.role} onNavigate={() => setMobileOpen(false)} />
             </div>
             <div className="border-t border-sidebar-border p-2">
               <div className="flex items-center gap-1">

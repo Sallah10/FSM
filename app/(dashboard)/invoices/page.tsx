@@ -1,12 +1,14 @@
 import Link from 'next/link';
 import { Plus } from 'lucide-react';
 import { listInvoices } from '@/lib/db/queries';
+import { requireSession } from '@/lib/auth/session';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { InvoicesTable } from '@/components/invoices/InvoicesTable';
 import { Button } from '@/components/ui/button';
 
 export default async function InvoicesPage() {
-  const invoices = await listInvoices();
+  const { orgId } = await requireSession();
+  const invoices = await listInvoices(orgId);
 
   return (
     <div className="flex flex-col gap-6">

@@ -1,25 +1,31 @@
-import { desc, eq } from 'drizzle-orm';
+import { and, desc, eq } from 'drizzle-orm';
 import { randomUUID } from 'node:crypto';
 import { db } from './index';
 import {
   customers,
+  invites,
   invoices,
   invoiceItems,
   jobEvents,
   jobs,
+  organizations,
   technicians,
   users,
 } from './schema';
 import type {
   Customer,
   DashboardStats,
+  Invite,
   Invoice,
   InvoiceStatus,
   Job,
   JobEvent,
   JobPriority,
   JobStatus,
+  OrgMember,
+  Organization,
   Technician,
+  UserRole,
 } from '@/lib/types';
 
 export function newId(prefix: string) {
@@ -38,7 +44,7 @@ function jitter(center: number) {
 
 /* ------------------------------- jobs ------------------------------- */
 
-export async function listJobs(): Promise<Job[]> {
+export async function listJobs(orgId: string): Promise<Job[]> {
   const rows = await db
     .select({
       id: jobs.id,
@@ -57,6 +63,7 @@ export async function listJobs(): Promise<Job[]> {
     .from(jobs)
     .leftJoin(customers, eq(jobs.customerId, customers.id))
     .leftJoin(technicians, eq(jobs.technicianId, technicians.id))
+    .where(eq(jobs.orgId, orgId))
     .orderBy(desc(jobs.date));
 
   return rows.map((row) => ({
@@ -67,7 +74,7 @@ export async function listJobs(): Promise<Job[]> {
   }));
 }
 
-export async function getJob(id: string): Promise<Job | undefined> {
+export async function getJob(orgId: string, id: string): Promise<Job | undefined> {
   const rows = await db
     .select({
       id: jobs.id,
@@ -86,7 +93,7 @@ export async function getJob(id: string): Promise<Job | undefined> {
     .from(jobs)
     .leftJoin(customers, eq(jobs.customerId, customers.id))
     .leftJoin(technicians, eq(jobs.technicianId, technicians.id))
-    .where(eq(jobs.id, id))
+    .where(and(eq(jobs.id, id), eq(jobs.orgId, orgId)))
     .limit(1);
 
   const row = rows[0];
@@ -100,20 +107,24 @@ export async function getJob(id: string): Promise<Job | undefined> {
   };
 }
 
-export async function createJob(input: {
-  title: string;
-  customerId: string;
-  description?: string;
-  status?: JobStatus;
-  priority?: JobPriority;
-  date?: string;
-  technicianId?: string | null;
-  lat?: number;
-  lng?: number;
-}): Promise<Job> {
+export async function createJob(
+  orgId: string,
+  input: {
+    title: string;
+    customerId: string;
+    description?: string;
+    status?: JobStatus;
+    priority?: JobPriority;
+    date?: string;
+    technicianId?: string | null;
+    lat?: number;
+    lng?: number;
+  },
+): Promise<Job> {
   const id = newId('job');
   await db.insert(jobs).values({
     id,
+    orgId,
     title: input.title,
     customerId: input.customerId,
     description: input.description ?? null,
@@ -126,10 +137,11 @@ export async function createJob(input: {
   });
 
   await createJobEvent(id, 'created', 'Job created');
-  return (await getJob(id))!;
+  return (await getJob(orgId, id))!;
 }
 
 export async function updateJob(
+  orgId: string,
   id: string,
   patch: {
     title?: string;
@@ -143,10 +155,13 @@ export async function updateJob(
     lng?: number;
   },
 ): Promise<Job | undefined> {
-  const before = await getJob(id);
+  const before = await getJob(orgId, id);
   if (!before) return undefined;
 
-  await db.update(jobs).set(patch).where(eq(jobs.id, id));
+  await db
+    .update(jobs)
+    .set(patch)
+    .where(and(eq(jobs.id, id), eq(jobs.orgId, orgId)));
 
   if (patch.status && patch.status !== before.status) {
     await createJobEvent(
@@ -156,27 +171,34 @@ export async function updateJob(
     );
   }
   if (patch.technicianId && patch.technicianId !== before.technicianId) {
-    const tech = await getTechnician(patch.technicianId);
+    const tech = await getTechnician(orgId, patch.technicianId);
     if (tech) await createJobEvent(id, 'assignment', `Assigned to ${tech.name}`);
   }
 
-  return getJob(id);
+  return getJob(orgId, id);
 }
 
 export async function updateJobStatus(
+  orgId: string,
   id: string,
   status: JobStatus,
 ): Promise<Job | undefined> {
-  return updateJob(id, { status });
+  return updateJob(orgId, id, { status });
 }
 
-export async function deleteJob(id: string): Promise<void> {
-  await db.delete(jobs).where(eq(jobs.id, id));
+export async function deleteJob(orgId: string, id: string): Promise<void> {
+  await db.delete(jobs).where(and(eq(jobs.id, id), eq(jobs.orgId, orgId)));
 }
 
 /* --------------------------- job activity --------------------------- */
 
-export async function listJobEvents(jobId: string): Promise<JobEvent[]> {
+export async function listJobEvents(
+  orgId: string,
+  jobId: string,
+): Promise<JobEvent[]> {
+  const job = await getJob(orgId, jobId);
+  if (!job) return [];
+
   const rows = await db
     .select()
     .from(jobEvents)
@@ -206,26 +228,41 @@ export async function createJobEvent(
 
 /* ----------------------------- customers ---------------------------- */
 
-export async function listCustomers(): Promise<Customer[]> {
-  return db.select().from(customers).orderBy(customers.name);
+export async function listCustomers(orgId: string): Promise<Customer[]> {
+  return db
+    .select()
+    .from(customers)
+    .where(eq(customers.orgId, orgId))
+    .orderBy(customers.name);
 }
 
-export async function getCustomer(id: string): Promise<Customer | undefined> {
-  const rows = await db.select().from(customers).where(eq(customers.id, id)).limit(1);
+export async function getCustomer(
+  orgId: string,
+  id: string,
+): Promise<Customer | undefined> {
+  const rows = await db
+    .select()
+    .from(customers)
+    .where(and(eq(customers.id, id), eq(customers.orgId, orgId)))
+    .limit(1);
   return rows[0];
 }
 
-export async function createCustomer(input: {
-  name: string;
-  email: string;
-  phone?: string;
-  address?: string;
-  lat?: number;
-  lng?: number;
-}): Promise<Customer> {
+export async function createCustomer(
+  orgId: string,
+  input: {
+    name: string;
+    email: string;
+    phone?: string;
+    address?: string;
+    lat?: number;
+    lng?: number;
+  },
+): Promise<Customer> {
   const id = newId('cus');
   await db.insert(customers).values({
     id,
+    orgId,
     name: input.name,
     email: input.email,
     phone: input.phone ?? null,
@@ -234,10 +271,11 @@ export async function createCustomer(input: {
     lng: input.lng ?? jitter(LAGOS.lng),
   });
 
-  return (await getCustomer(id))!;
+  return (await getCustomer(orgId, id))!;
 }
 
 export async function updateCustomer(
+  orgId: string,
   id: string,
   patch: Partial<{
     name: string;
@@ -248,40 +286,56 @@ export async function updateCustomer(
     lng: number;
   }>,
 ): Promise<Customer | undefined> {
-  await db.update(customers).set(patch).where(eq(customers.id, id));
-  return getCustomer(id);
+  await db
+    .update(customers)
+    .set(patch)
+    .where(and(eq(customers.id, id), eq(customers.orgId, orgId)));
+  return getCustomer(orgId, id);
 }
 
-export async function deleteCustomer(id: string): Promise<void> {
-  await db.delete(customers).where(eq(customers.id, id));
+export async function deleteCustomer(orgId: string, id: string): Promise<void> {
+  await db
+    .delete(customers)
+    .where(and(eq(customers.id, id), eq(customers.orgId, orgId)));
 }
 
 /* ---------------------------- technicians --------------------------- */
 
-export async function listTechnicians(): Promise<Technician[]> {
-  return db.select().from(technicians).orderBy(technicians.name);
+export async function listTechnicians(orgId: string): Promise<Technician[]> {
+  return db
+    .select()
+    .from(technicians)
+    .where(eq(technicians.orgId, orgId))
+    .orderBy(technicians.name);
 }
 
-export async function getTechnician(id: string): Promise<Technician | undefined> {
+export async function getTechnician(
+  orgId: string,
+  id: string,
+): Promise<Technician | undefined> {
   const rows = await db
     .select()
     .from(technicians)
-    .where(eq(technicians.id, id))
+    .where(and(eq(technicians.id, id), eq(technicians.orgId, orgId)))
     .limit(1);
   return rows[0];
 }
 
-export async function createTechnician(input: {
-  name: string;
-  email: string;
-  phone?: string;
-  role?: string;
-  lat?: number;
-  lng?: number;
-}): Promise<Technician> {
+export async function createTechnician(
+  orgId: string,
+  input: {
+    name: string;
+    email: string;
+    phone?: string;
+    role?: string;
+    lat?: number;
+    lng?: number;
+  },
+): Promise<Technician> {
   const id = newId('tech');
   await db.insert(technicians).values({
     id,
+    orgId,
     name: input.name,
     email: input.email,
     phone: input.phone ?? null,
@@ -289,10 +343,11 @@ export async function createTechnician(input: {
     lat: input.lat ?? jitter(LAGOS.lat),
     lng: input.lng ?? jitter(LAGOS.lng),
   });
-  return (await getTechnician(id))!;
+  return (await getTechnician(orgId, id))!;
 }
 
 export async function updateTechnician(
+  orgId: string,
   id: string,
   patch: Partial<{
     name: string;
@@ -303,19 +358,32 @@ export async function updateTechnician(
     lng: number;
   }>,
 ): Promise<Technician | undefined> {
-  await db.update(technicians).set(patch).where(eq(technicians.id, id));
-  return getTechnician(id);
+  await db
+    .update(technicians)
+    .set(patch)
+    .where(and(eq(technicians.id, id), eq(technicians.orgId, orgId)));
+  return getTechnician(orgId, id);
 }
 
-export async function deleteTechnician(id: string): Promise<void> {
-  await db.delete(technicians).where(eq(technicians.id, id));
+export async function deleteTechnician(orgId: string, id: string): Promise<void> {
+  await db
+    .delete(technicians)
+    .where(and(eq(technicians.id, id), eq(technicians.orgId, orgId)));
 }
 
 /* ------------------------------ invoices ---------------------------- */
 
-async function itemsByInvoice() {
+async function itemsByInvoice(orgId: string) {
   const grouped = new Map<string, { name: string; price: number }[]>();
-  const all = await db.select().from(invoiceItems);
+  const all = await db
+    .select({
+      invoiceId: invoiceItems.invoiceId,
+      name: invoiceItems.name,
+      price: invoiceItems.price,
+    })
+    .from(invoiceItems)
+    .innerJoin(invoices, eq(invoiceItems.invoiceId, invoices.id))
+    .where(eq(invoices.orgId, orgId));
   for (const item of all) {
     const list = grouped.get(item.invoiceId) ?? [];
     list.push({ name: item.name, price: item.price });
@@ -324,9 +392,9 @@ async function itemsByInvoice() {
   return grouped;
 }
 
-export async function listInvoices(): Promise<Invoice[]> {
+export async function listInvoices(orgId: string): Promise<Invoice[]> {
   const [items, rows] = await Promise.all([
-    itemsByInvoice(),
+    itemsByInvoice(orgId),
     db
       .select({
         id: invoices.id,
@@ -338,6 +406,7 @@ export async function listInvoices(): Promise<Invoice[]> {
       })
       .from(invoices)
       .leftJoin(customers, eq(invoices.customerId, customers.id))
+      .where(eq(invoices.orgId, orgId))
       .orderBy(desc(invoices.date)),
   ]);
 
@@ -349,7 +418,10 @@ export async function listInvoices(): Promise<Invoice[]> {
   }));
 }
 
-export async function getInvoice(id: string): Promise<Invoice | undefined> {
+export async function getInvoice(
+  orgId: string,
+  id: string,
+): Promise<Invoice | undefined> {
   const rows = await db
     .select({
       id: invoices.id,
@@ -361,7 +433,7 @@ export async function getInvoice(id: string): Promise<Invoice | undefined> {
     })
     .from(invoices)
     .leftJoin(customers, eq(invoices.customerId, customers.id))
-    .where(eq(invoices.id, id))
+    .where(and(eq(invoices.id, id), eq(invoices.orgId, orgId)))
     .limit(1);
 
   const row = rows[0];
@@ -380,17 +452,21 @@ export async function getInvoice(id: string): Promise<Invoice | undefined> {
   };
 }
 
-export async function createInvoice(input: {
-  customerId: string;
-  date?: string;
-  status?: InvoiceStatus;
-  items: { name: string; price: number }[];
-}): Promise<Invoice> {
+export async function createInvoice(
+  orgId: string,
+  input: {
+    customerId: string;
+    date?: string;
+    status?: InvoiceStatus;
+    items: { name: string; price: number }[];
+  },
+): Promise<Invoice> {
   const id = newId('inv');
   const amount = input.items.reduce((sum, item) => sum + item.price, 0);
 
   await db.insert(invoices).values({
     id,
+    orgId,
     customerId: input.customerId,
     amount,
     status: input.status ?? 'unpaid',
@@ -408,19 +484,53 @@ export async function createInvoice(input: {
     );
   }
 
-  return (await getInvoice(id))!;
+  return (await getInvoice(orgId, id))!;
 }
 
 export async function updateInvoiceStatus(
+  orgId: string,
   id: string,
   status: InvoiceStatus,
 ): Promise<Invoice | undefined> {
-  await db.update(invoices).set({ status }).where(eq(invoices.id, id));
-  return getInvoice(id);
+  await db
+    .update(invoices)
+    .set({ status })
+    .where(and(eq(invoices.id, id), eq(invoices.orgId, orgId)));
+  return getInvoice(orgId, id);
 }
 
-export async function deleteInvoice(id: string): Promise<void> {
-  await db.delete(invoices).where(eq(invoices.id, id));
+export async function deleteInvoice(orgId: string, id: string): Promise<void> {
+  await db
+    .delete(invoices)
+    .where(and(eq(invoices.id, id), eq(invoices.orgId, orgId)));
+}
+
+/* --------------------------- organizations -------------------------- */
+
+export async function createOrganization(name: string): Promise<Organization> {
+  const id = newId('org');
+  await db.insert(organizations).values({ id, name });
+  return { id, name };
+}
+
+export async function getOrganization(
+  id: string,
+): Promise<Organization | undefined> {
+  const rows = await db
+    .select()
+    .from(organizations)
+    .where(eq(organizations.id, id))
+    .limit(1);
+  const row = rows[0];
+  if (!row) return undefined;
+  return { id: row.id, name: row.name, createdAt: row.createdAt.toISOString() };
+}
+
+export async function renameOrganization(
+  id: string,
+  name: string,
+): Promise<void> {
+  await db.update(organizations).set({ name }).where(eq(organizations.id, id));
 }
 
 /* ------------------------------- users ------------------------------ */
@@ -443,7 +553,8 @@ export async function createUser(input: {
   name: string;
   email: string;
   passwordHash?: string | null;
-  role?: string;
+  role?: UserRole;
+  orgId?: string | null;
   image?: string | null;
 }) {
   const id = newId('usr');
@@ -453,20 +564,114 @@ export async function createUser(input: {
     email: input.email.toLowerCase(),
     passwordHash: input.passwordHash ?? null,
     role: input.role ?? 'dispatcher',
+    orgId: input.orgId ?? null,
     image: input.image ?? null,
   });
 
   return (await getUserById(id))!;
 }
 
+export async function listMembers(orgId: string): Promise<OrgMember[]> {
+  const rows = await db
+    .select({
+      id: users.id,
+      name: users.name,
+      email: users.email,
+      role: users.role,
+    })
+    .from(users)
+    .where(eq(users.orgId, orgId))
+    .orderBy(users.name);
+  return rows.map((row) => ({ ...row, role: row.role as UserRole }));
+}
+
+export async function updateMemberRole(
+  orgId: string,
+  userId: string,
+  role: UserRole,
+): Promise<void> {
+  await db
+    .update(users)
+    .set({ role })
+    .where(and(eq(users.id, userId), eq(users.orgId, orgId)));
+}
+
+export async function removeMember(orgId: string, userId: string): Promise<void> {
+  await db
+    .delete(users)
+    .where(and(eq(users.id, userId), eq(users.orgId, orgId)));
+}
+
+/* ------------------------------- invites ---------------------------- */
+
+function toInvite(row: typeof invites.$inferSelect): Invite {
+  return {
+    id: row.id,
+    orgId: row.orgId,
+    email: row.email,
+    role: row.role as UserRole,
+    token: row.token,
+    status: row.status as Invite['status'],
+    createdAt: row.createdAt.toISOString(),
+  };
+}
+
+export async function createInvite(
+  orgId: string,
+  email: string,
+  role: UserRole,
+): Promise<Invite> {
+  const id = newId('invite');
+  const token = randomUUID().replace(/-/g, '');
+  await db.insert(invites).values({
+    id,
+    orgId,
+    email: email.toLowerCase(),
+    role,
+    token,
+    status: 'pending',
+  });
+  const rows = await db.select().from(invites).where(eq(invites.id, id)).limit(1);
+  return toInvite(rows[0]);
+}
+
+export async function listInvites(orgId: string): Promise<Invite[]> {
+  const rows = await db
+    .select()
+    .from(invites)
+    .where(and(eq(invites.orgId, orgId), eq(invites.status, 'pending')))
+    .orderBy(desc(invites.createdAt));
+  return rows.map(toInvite);
+}
+
+export async function getInviteByToken(token: string): Promise<Invite | undefined> {
+  const rows = await db
+    .select()
+    .from(invites)
+    .where(eq(invites.token, token))
+    .limit(1);
+  return rows[0] ? toInvite(rows[0]) : undefined;
+}
+
+export async function markInviteAccepted(id: string): Promise<void> {
+  await db.update(invites).set({ status: 'accepted' }).where(eq(invites.id, id));
+}
+
+export async function revokeInvite(orgId: string, id: string): Promise<void> {
+  await db
+    .update(invites)
+    .set({ status: 'revoked' })
+    .where(and(eq(invites.id, id), eq(invites.orgId, orgId)));
+}
+
 /* ------------------------------- stats ------------------------------ */
 
-export async function getStats(): Promise<DashboardStats> {
+export async function getStats(orgId: string): Promise<DashboardStats> {
   const [allJobs, allInvoices, customerList, technicianList] = await Promise.all([
-    listJobs(),
-    listInvoices(),
-    listCustomers(),
-    listTechnicians(),
+    listJobs(orgId),
+    listInvoices(orgId),
+    listCustomers(orgId),
+    listTechnicians(orgId),
   ]);
 
   const countBy = (status: JobStatus) =>

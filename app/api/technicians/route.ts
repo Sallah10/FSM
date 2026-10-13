@@ -1,23 +1,21 @@
 import { NextResponse } from 'next/server';
 import { createTechnician, listTechnicians } from '@/lib/db/queries';
-import { getApiSession } from '@/lib/auth/session';
+import { authorize } from '@/lib/auth/session';
 import { createTechnicianSchema } from '@/lib/validation';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
-  const session = await getApiSession();
-  if (!session?.user) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
-  return NextResponse.json({ technicians: await listTechnicians() });
+  const auth = await authorize();
+  if (!auth.ok) return auth.response;
+  return NextResponse.json({
+    technicians: await listTechnicians(auth.context.orgId),
+  });
 }
 
 export async function POST(req: Request) {
-  const session = await getApiSession();
-  if (!session?.user) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+  const auth = await authorize('admin', 'dispatcher');
+  if (!auth.ok) return auth.response;
 
   const body = await req.json().catch(() => null);
   const parsed = createTechnicianSchema.safeParse(body);
@@ -29,7 +27,7 @@ export async function POST(req: Request) {
   }
 
   return NextResponse.json(
-    { technician: await createTechnician(parsed.data) },
+    { technician: await createTechnician(auth.context.orgId, parsed.data) },
     { status: 201 },
   );
 }

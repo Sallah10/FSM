@@ -269,6 +269,123 @@ async function main() {
     `got ${fresh.status}`,
   );
 
+  // 9. Organization + invites.
+  const anonOrg = await fetch(`${baseUrl}/api/org`);
+  check(
+    "GET /api/org is 401 when signed out",
+    anonOrg.status === 401,
+    `got ${anonOrg.status}`,
+  );
+
+  const orgRes = await fetch(`${baseUrl}/api/org`, {
+    headers: { Cookie: jar.header() },
+  });
+  const orgJson = (await orgRes.json()) as {
+    members?: { id: string }[];
+    currentRole?: string;
+  };
+  check("GET /api/org returns 200", orgRes.status === 200, `got ${orgRes.status}`);
+  check("Organization has members", (orgJson.members?.length ?? 0) > 0);
+  check("Signed-in demo user is an admin", orgJson.currentRole === "admin");
+
+  const inviteEmail = `invite_${Date.now()}@quickset.com`;
+  const inviteRes = await fetch(`${baseUrl}/api/org/invites`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Cookie: jar.header() },
+    body: JSON.stringify({ email: inviteEmail, role: "technician" }),
+  });
+  const inviteJson = (await inviteRes.json()) as {
+    invite?: { id: string; token: string };
+  };
+  check(
+    "POST /api/org/invites creates an invite",
+    inviteRes.status === 201,
+    `got ${inviteRes.status}`,
+  );
+
+  if (inviteJson.invite?.token) {
+    const publicInvite = await fetch(
+      `${baseUrl}/api/invite/${inviteJson.invite.token}`,
+    );
+    const publicJson = (await publicInvite.json()) as {
+      invite?: { email?: string };
+    };
+    check(
+      "GET /api/invite/[token] is public",
+      publicInvite.status === 200 && publicJson.invite?.email === inviteEmail,
+      `got ${publicInvite.status}`,
+    );
+
+    const acceptRes = await fetch(
+      `${baseUrl}/api/invite/${inviteJson.invite.token}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: "Invited Tech", password: "password123" }),
+      },
+    );
+    check(
+      "POST /api/invite/[token] accepts the invite",
+      acceptRes.status === 201,
+      `got ${acceptRes.status}`,
+    );
+
+    const revoked = await fetch(
+      `${baseUrl}/api/org/invites/${inviteJson.invite.id}`,
+      { method: "DELETE", headers: { Cookie: jar.header() } },
+    );
+    check("DELETE /api/org/invites/[id] works", revoked.status === 200);
+  }
+
+  // 10. Role enforcement: technicians are read-only on directory + org admin.
+  const techJar = new CookieJar();
+  const techCsrfRes = await fetch(`${baseUrl}/api/auth/csrf`);
+  techJar.store(techCsrfRes);
+  const { csrfToken: techCsrf } = (await techCsrfRes.json()) as {
+    csrfToken: string;
+  };
+  const techLogin = await fetch(`${baseUrl}/api/auth/callback/credentials`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/x-www-form-urlencoded",
+      Cookie: techJar.header(),
+    },
+    body: new URLSearchParams({
+      csrfToken: techCsrf,
+      email: "technician@quickset.com",
+      password: "demo123",
+      callbackUrl: `${baseUrl}/dashboard`,
+      json: "true",
+    }),
+    redirect: "manual",
+  });
+  techJar.store(techLogin);
+
+  const forbiddenTech = await fetch(`${baseUrl}/api/technicians`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Cookie: techJar.header() },
+    body: JSON.stringify({
+      name: "Should Fail",
+      email: `blocked_${Date.now()}@quickset.com`,
+    }),
+  });
+  check(
+    "Technician cannot create technicians (403)",
+    forbiddenTech.status === 403,
+    `got ${forbiddenTech.status}`,
+  );
+
+  const forbiddenInvite = await fetch(`${baseUrl}/api/org/invites`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Cookie: techJar.header() },
+    body: JSON.stringify({ email: `blocked_${Date.now()}@quickset.com` }),
+  });
+  check(
+    "Technician cannot invite members (403)",
+    forbiddenInvite.status === 403,
+    `got ${forbiddenInvite.status}`,
+  );
+
   console.log(`\n  ${passed} passed, ${failed} failed\n`);
   if (failed > 0) {
     console.log("Failures:", failures.join(", "));

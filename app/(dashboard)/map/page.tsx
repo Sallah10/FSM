@@ -1,13 +1,15 @@
 import { listCustomers, listJobs, listTechnicians } from '@/lib/db/queries';
+import { requireSession } from '@/lib/auth/session';
 import { PageHeader } from '@/components/layout/PageHeader';
 import MapView from '@/components/MapView';
 import type { MarkerData } from '@/components/Map';
 
 export default async function MapPage() {
+  const { orgId } = await requireSession();
   const [jobs, technicians, customers] = await Promise.all([
-    listJobs(),
-    listTechnicians(),
-    listCustomers(),
+    listJobs(orgId),
+    listTechnicians(orgId),
+    listCustomers(orgId),
   ]);
 
   const hasCoords = (row: { lat?: number | null; lng?: number | null }) =>
