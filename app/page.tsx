@@ -3,6 +3,7 @@ import {
   BarChart3,
   Briefcase,
   CheckCircle2,
+  ChevronDown,
   FileText,
   MapPin,
   Wrench,
@@ -72,7 +73,7 @@ export default function HomePage() {
 
       <main className="flex-1">
         <section className="border-b">
-          <div className="mx-auto w-full max-w-6xl px-4 py-20 text-center sm:px-6">
+          <div className="relative mx-auto flex min-h-[calc(100svh-3.5rem)] w-full max-w-6xl flex-col items-center justify-center px-4 py-16 text-center sm:px-6">
             <p className="mb-3 text-sm font-medium text-muted-foreground">
               Field service management
             </p>
@@ -94,11 +95,22 @@ export default function HomePage() {
             <p className="mt-3 text-xs text-muted-foreground">
               Demo - demo@quickset.com / demo123
             </p>
+
+            <a
+              href="#features"
+              aria-label="Scroll to features"
+              className="absolute bottom-8 flex flex-col items-center gap-1.5 text-muted-foreground transition-colors hover:text-foreground"
+            >
+              <span className="text-[11px] font-medium uppercase tracking-wider">
+                Explore
+              </span>
+              <ChevronDown className="size-4 animate-bounce" />
+            </a>
           </div>
         </section>
 
-        <section>
-          <div className="mx-auto w-full max-w-6xl px-4 py-16 sm:px-6">
+        <section id="features">
+          <div className="mx-auto w-full max-w-6xl scroll-mt-16 px-4 py-16 sm:px-6">
             <div className="grid gap-px overflow-hidden rounded-lg border bg-border sm:grid-cols-2 lg:grid-cols-3">
               {features.map((feature) => {
                 const Icon = feature.icon;

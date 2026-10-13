@@ -36,6 +36,7 @@ export function UserMenu({
 }) {
   const { setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
 
@@ -43,7 +44,7 @@ export function UserMenu({
 
   return (
     <>
-      <DropdownMenu>
+      <DropdownMenu open={menuOpen} onOpenChange={setMenuOpen}>
         <DropdownMenuTrigger
           className="flex w-full items-center gap-2.5 rounded-md px-2 py-2 text-left outline-none transition-colors hover:bg-sidebar-accent focus-visible:ring-2 focus-visible:ring-ring/50"
           aria-label="Account menu"
@@ -78,7 +79,8 @@ export function UserMenu({
             variant="destructive"
             onSelect={(event) => {
               event.preventDefault();
-              setConfirmOpen(true);
+              setMenuOpen(false);
+              setTimeout(() => setConfirmOpen(true), 0);
             }}
           >
             <LogOut /> Sign out
