@@ -10,6 +10,7 @@ import {
   LayoutDashboard,
   Map,
   Menu,
+  Settings2,
   Users,
   Wrench,
   X,
@@ -45,6 +46,10 @@ const groups: NavGroup[] = [
   {
     label: 'Insights',
     items: [{ label: 'Analytics', href: '/analytics', icon: BarChart3 }],
+  },
+  {
+    label: 'Account',
+    items: [{ label: 'Settings', href: '/settings', icon: Settings2 }],
   },
 ];
 
@@ -125,7 +130,12 @@ export default function AppShell({
           <Nav />
         </div>
         <div className="border-t border-sidebar-border p-2">
-          <UserMenu name={user.name} email={user.email} role={user.role} />
+          <div className="flex items-center gap-1">
+            <div className="min-w-0 flex-1">
+              <UserMenu name={user.name} email={user.email} role={user.role} />
+            </div>
+            <ThemeToggle />
+          </div>
         </div>
       </aside>
 
@@ -170,7 +180,12 @@ export default function AppShell({
               <Nav onNavigate={() => setMobileOpen(false)} />
             </div>
             <div className="border-t border-sidebar-border p-2">
-              <UserMenu name={user.name} email={user.email} role={user.role} />
+              <div className="flex items-center gap-1">
+                <div className="min-w-0 flex-1">
+                  <UserMenu name={user.name} email={user.email} role={user.role} />
+                </div>
+                <ThemeToggle />
+              </div>
             </div>
           </div>
         </div>

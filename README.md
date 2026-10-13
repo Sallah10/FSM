@@ -17,7 +17,8 @@ Built with **Next.js 15 (App Router) · React 19 · TypeScript · Tailwind v4 ·
 - **Invoices** - line-item invoices with a printable preview, inline status changes, and full CRUD.
 - **Analytics** - revenue by month, jobs by status, and jobs-per-technician charts, all driven by real query results.
 - **Service map** - Leaflet map with clustered, colour-coded markers for jobs, technicians and customers, plus layer toggles, search and "locate me".
-- **UI** - a consistent, data-dense design system with light/dark mode, a responsive sidebar and a mobile drawer, plus toast feedback on every write.
+- **Settings** - account profile, appearance (light / dark / system) and a security panel; organization + two-factor settings are scaffolded for the multi-tenant roadmap.
+- **UI** - a consistent, data-dense design system with light/dark mode, a responsive sidebar and a mobile drawer, plus toast feedback on every write. Loading skeletons on every route, a friendly 404 with an auto-redirect countdown, show/hide password fields, and a confirm step before signing out.
 
 ## Tech stack
 
@@ -62,7 +63,7 @@ npm run dev
 
 Open <http://localhost:3000>.
 
-To point at a hosted Postgres (e.g. Neon) instead, set `DATABASE_URL` in `.env.local` and run `npm run db:migrate` then `npm run db:seed`.
+To point at a hosted Postgres (e.g. Neon) instead, set `DATABASE_URL` in `.env.local` and run `npm run db:migrate` then `npm run db:seed`. The DB scripts load `.env.local` automatically, so they hit the same database the app runs against - `DATABASE_URL` set means Neon, blank means the embedded PGlite.
 
 ### Demo login
 
@@ -140,7 +141,7 @@ Reads happen in Server Components straight from Postgres; writes go through vali
 - `npm run typecheck` - clean
 - `npm test` - 15 tests across 4 files
 - `npm run smoke` - 27 HTTP checks (auth, page rendering, CRUD, validation)
-- Production build - 30 routes, 103 kB shared JS
+- Production build - 31 routes, 103 kB shared JS
 - `npm audit --omit=dev` - **0 vulnerabilities** in production dependencies
 
 ## Known limitations
@@ -148,6 +149,9 @@ Reads happen in Server Components straight from Postgres; writes go through vali
 Being honest about scope:
 
 - **Roles are stored but not enforced.** Everything is effectively admin. No per-user data scoping yet.
+- **Single-tenant.** There is no organization/workspace concept yet - multi-tenant orgs with invites are next.
+- **No two-factor auth yet.** The Settings security panel is in place for authenticator-app (TOTP) 2FA, which is planned.
+- **No realtime.** Chat/live updates will use a managed WebSocket provider once the multi-tenant work lands.
 - **No pagination or server-side search** - lists are small by design, so filtering happens client-side.
 - **Coordinates aren't geocoded.** New records are placed near central Lagos so they appear on the map.
 - **No optimistic UI on lists.** Writes refresh the route rather than updating local state in place.

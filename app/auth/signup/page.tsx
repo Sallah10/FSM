@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Wrench } from 'lucide-react';
 import { Input } from '@/components/ui/input';
+import { PasswordInput } from '@/components/ui/password-input';
 import { Button } from '@/components/ui/button';
 import { FormRow } from '@/components/forms/fields';
 import {
@@ -98,10 +99,9 @@ export default function SignupPage() {
             </FormRow>
 
             <FormRow label="Password" htmlFor="password" hint="At least 8 characters.">
-              <Input
+              <PasswordInput
                 id="password"
                 name="password"
-                type="password"
                 autoComplete="new-password"
                 placeholder="••••••••"
                 value={form.password}
