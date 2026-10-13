@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Wrench } from 'lucide-react';
 import { Input } from '@/components/ui/input';
+import { PasswordInput } from '@/components/ui/password-input';
 import { Button } from '@/components/ui/button';
 import { FormRow } from '@/components/forms/fields';
 import {
@@ -96,10 +97,9 @@ function LoginForm() {
             </FormRow>
 
             <FormRow label="Password" htmlFor="password">
-              <Input
+              <PasswordInput
                 id="password"
                 name="password"
-                type="password"
                 autoComplete="current-password"
                 placeholder="••••••••"
                 value={form.password}
