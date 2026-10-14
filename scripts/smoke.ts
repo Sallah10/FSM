@@ -125,6 +125,7 @@ async function main() {
     "/invoices",
     "/analytics",
     "/map",
+    "/chat",
   ]) {
     const res = await fetch(`${baseUrl}${path}`, {
       headers: { Cookie: jar.header() },
@@ -384,6 +385,48 @@ async function main() {
     "Technician cannot invite members (403)",
     forbiddenInvite.status === 403,
     `got ${forbiddenInvite.status}`,
+  );
+
+  // 11. Live chat.
+  const anonMessages = await fetch(`${baseUrl}/api/messages`);
+  check(
+    "GET /api/messages is 401 when signed out",
+    anonMessages.status === 401,
+    `got ${anonMessages.status}`,
+  );
+
+  const room = `job:smoke_${Date.now()}`;
+  const postMessage = await fetch(`${baseUrl}/api/messages`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Cookie: jar.header() },
+    body: JSON.stringify({ roomId: room, body: "Smoke hello" }),
+  });
+  check(
+    "POST /api/messages creates a message",
+    postMessage.status === 201,
+    `got ${postMessage.status}`,
+  );
+
+  const getMessages = await fetch(
+    `${baseUrl}/api/messages?room=${encodeURIComponent(room)}`,
+    { headers: { Cookie: jar.header() } },
+  );
+  const messagesJson = (await getMessages.json()) as {
+    messages?: { body: string }[];
+  };
+  check("GET /api/messages returns 200", getMessages.status === 200);
+  check(
+    "GET /api/messages includes the new message",
+    (messagesJson.messages ?? []).some((m) => m.body === "Smoke hello"),
+  );
+
+  const badRoom = await fetch(`${baseUrl}/api/messages?room=nope`, {
+    headers: { Cookie: jar.header() },
+  });
+  check(
+    "GET /api/messages rejects unknown rooms",
+    badRoom.status === 400,
+    `got ${badRoom.status}`,
   );
 
   console.log(`\n  ${passed} passed, ${failed} failed\n`);

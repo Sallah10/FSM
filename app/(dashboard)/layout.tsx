@@ -1,4 +1,5 @@
 import AppShell from '@/components/layout/AppShell';
+import { LiveRefresh } from '@/components/realtime/LiveRefresh';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/authOptions';
 
@@ -13,6 +14,9 @@ export default async function DashboardLayout({
   const session = await getServerSession(authOptions);
 
   return (
-    <AppShell user={session?.user ?? {}}>{children}</AppShell>
+    <AppShell user={session?.user ?? {}}>
+      {session?.user?.orgId ? <LiveRefresh orgId={session.user.orgId} /> : null}
+      {children}
+    </AppShell>
   );
 }

@@ -90,6 +90,17 @@ export const updateMemberRoleSchema = z.object({
   role: userRoleSchema,
 });
 
+// Chat rooms are 'general' (team channel) or 'job:<id>' (a job thread).
+export const chatRoomIdSchema = z
+  .string()
+  .trim()
+  .regex(/^(general|job:[A-Za-z0-9_-]+)$/);
+
+export const createMessageSchema = z.object({
+  roomId: chatRoomIdSchema,
+  body: z.string().trim().min(1).max(2000),
+});
+
 export type CreateJobInput = z.infer<typeof createJobSchema>;
 export type UpdateJobInput = z.infer<typeof updateJobSchema>;
 export type CreateCustomerInput = z.infer<typeof createCustomerSchema>;

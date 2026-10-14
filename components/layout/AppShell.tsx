@@ -10,6 +10,7 @@ import {
   LayoutDashboard,
   Map,
   Menu,
+  MessageSquare,
   Settings2,
   Users,
   Wrench,
@@ -35,6 +36,7 @@ const groups: NavGroup[] = [
       { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
       { label: 'Jobs', href: '/jobs', icon: Briefcase },
       { label: 'Service map', href: '/map', icon: Map },
+      { label: 'Team chat', href: '/chat', icon: MessageSquare },
     ],
   },
   {

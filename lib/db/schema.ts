@@ -109,6 +109,20 @@ export const jobEvents = pgTable('job_events', {
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });
 
+// Live chat rows. roomId is 'general' for the team channel or `job:<id>` for a
+// job thread. authorName is snapshotted so history survives a member leaving.
+export const messages = pgTable('messages', {
+  id: text('id').primaryKey(),
+  orgId: text('org_id')
+    .notNull()
+    .references(() => organizations.id, { onDelete: 'cascade' }),
+  roomId: text('room_id').notNull(),
+  authorId: text('author_id').notNull(),
+  authorName: text('author_name').notNull(),
+  body: text('body').notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
 export type OrganizationRow = typeof organizations.$inferSelect;
 export type UserRow = typeof users.$inferSelect;
 export type InviteRow = typeof invites.$inferSelect;
@@ -118,3 +132,4 @@ export type JobRow = typeof jobs.$inferSelect;
 export type InvoiceRow = typeof invoices.$inferSelect;
 export type InvoiceItemRow = typeof invoiceItems.$inferSelect;
 export type JobEventRow = typeof jobEvents.$inferSelect;
+export type MessageRow = typeof messages.$inferSelect;

@@ -8,6 +8,7 @@ import {
   invoiceItems,
   jobEvents,
   jobs,
+  messages,
   organizations,
   technicians,
   users,
@@ -22,6 +23,7 @@ import type {
   JobEvent,
   JobPriority,
   JobStatus,
+  Message,
   OrgMember,
   Organization,
   Technician,
@@ -664,10 +666,59 @@ export async function revokeInvite(orgId: string, id: string): Promise<void> {
     .where(and(eq(invites.id, id), eq(invites.orgId, orgId)));
 }
 
+/* ------------------------------ messages ---------------------------- */
+
+function toMessage(row: typeof messages.$inferSelect): Message {
+  return {
+    id: row.id,
+    roomId: row.roomId,
+    authorId: row.authorId,
+    authorName: row.authorName,
+    body: row.body,
+    createdAt: row.createdAt.toISOString(),
+  };
+}
+
+// Most recent `limit` messages for a room, returned oldest-first for display.
+export async function listMessages(
+  orgId: string,
+  roomId: string,
+  limit = 100,
+): Promise<Message[]> {
+  const rows = await db
+    .select()
+    .from(messages)
+    .where(and(eq(messages.orgId, orgId), eq(messages.roomId, roomId)))
+    .orderBy(desc(messages.createdAt))
+    .limit(limit);
+  return rows.reverse().map(toMessage);
+}
+
+export async function createMessage(
+  orgId: string,
+  author: { id: string; name: string },
+  input: { roomId: string; body: string },
+): Promise<Message> {
+  const id = newId('msg');
+  await db.insert(messages).values({
+    id,
+    orgId,
+    roomId: input.roomId,
+    authorId: author.id,
+    authorName: author.name,
+    body: input.body,
+  });
+  const rows = await db
+    .select()
+    .from(messages)
+    .where(eq(messages.id, id))
+    .limit(1);
+  return toMessage(rows[0]);
+}
+
 /* ------------------------------- stats ------------------------------ */
 
-export async function getStats(orgId: string): Promise<DashboardStats> {
-  const [allJobs, allInvoices, customerList, technicianList] = await Promise.all([
+export async function getStats(orgId: string): Promise<DashboardStats> {  const [allJobs, allInvoices, customerList, technicianList] = await Promise.all([
     listJobs(orgId),
     listInvoices(orgId),
     listCustomers(orgId),

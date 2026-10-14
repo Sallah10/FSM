@@ -1,17 +1,27 @@
-import { neon } from '@neondatabase/serverless';
 import { PGlite } from '@electric-sql/pglite';
-import { drizzle as drizzleNeon } from 'drizzle-orm/neon-http';
+import { drizzle as drizzlePostgres } from 'drizzle-orm/postgres-js';
 import { drizzle as drizzlePglite } from 'drizzle-orm/pglite';
 import type { PgDatabase, PgQueryResultHKT } from 'drizzle-orm/pg-core';
+import postgres from 'postgres';
 import * as schema from './schema';
 
 export type Database = PgDatabase<PgQueryResultHKT, typeof schema>;
 
-// On Vercel we talk to Neon over HTTP. Locally (and in tests) we run an embedded
-// Postgres (PGlite) so there's nothing to install. Same schema, same queries.
+// Any Postgres over TCP (Supabase in production, Neon, local Docker, ...) when
+// DATABASE_URL is set. Locally (and in tests) we run an embedded Postgres
+// (PGlite) so there's nothing to install. Same schema, same queries.
 function createDb(): Database {
-  if (process.env.DATABASE_URL) {
-    return drizzleNeon(neon(process.env.DATABASE_URL), { schema });
+  const url = process.env.DATABASE_URL;
+  if (url) {
+    const isLocal = /(^|@)(localhost|127\.0\.0\.1)/.test(url);
+    const client = postgres(url, {
+      // Transaction-mode poolers (Supabase Supavisor, Neon) can't hold prepared
+      // statements between queries.
+      prepare: false,
+      max: 1,
+      ssl: isLocal ? false : 'require',
+    });
+    return drizzlePostgres(client, { schema });
   }
   const client = new PGlite(process.env.PGLITE_PATH ?? './.pgdata');
   return drizzlePglite(client, { schema });
@@ -27,7 +37,7 @@ function getDb(): Database {
 }
 
 // Lazily open the connection on first query. This keeps `next build` (which
-// imports route modules but never runs them) from booting PGlite/Neon early.
+// imports route modules but never runs them) from booting PGlite/Postgres early.
 export const db = new Proxy({} as Database, {
   get(_target, prop) {
     const real = getDb() as unknown as Record<string | symbol, unknown>;

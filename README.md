@@ -18,6 +18,7 @@ Built with **Next.js 15 (App Router) · React 19 · TypeScript · Tailwind v4 ·
 - **Analytics** - revenue by month, jobs by status, and jobs-per-technician charts, all driven by real query results.
 - **Service map** - Leaflet map with clustered, colour-coded markers for jobs, technicians and customers, plus layer toggles, search and "locate me".
 - **Teams & roles** - every sign-up creates its own organization and becomes its admin. Admins invite teammates by email (a copyable link) as **dispatcher** or **technician**, change roles, and remove members. All data is scoped to the organization.
+- **Live chat & realtime** - a team channel and a per-job thread, plus live board updates. With Supabase configured, new messages and job/invoice changes stream in over Realtime (Postgres Changes) without a refresh; without it, everything still works over REST.
 - **Settings** - account profile, appearance (light / dark / system), a security panel, and a working **Organization** tab for members, roles and invites. Two-factor settings are scaffolded for the roadmap.
 - **UI** - a consistent, data-dense design system with light/dark mode, a responsive sidebar and a mobile drawer, plus toast feedback on every write. Loading skeletons on every route, a friendly 404 with an auto-redirect countdown, show/hide password fields, and a confirm step before signing out.
 
@@ -30,7 +31,8 @@ Built with **Next.js 15 (App Router) · React 19 · TypeScript · Tailwind v4 ·
 | Forms            | react-hook-form + Zod resolvers                                         |
 | Maps             | Leaflet + react-leaflet + leaflet.markercluster                         |
 | Auth             | NextAuth (JWT sessions) - credentials + optional Google                 |
-| Database         | PostgreSQL - **Neon** in production, embedded **PGlite** locally        |
+| Database         | PostgreSQL - **Supabase** in production, embedded **PGlite** locally    |
+| Realtime         | Supabase Realtime (Postgres Changes) for live chat + board updates      |
 | ORM / migrations | Drizzle ORM + Drizzle Kit                                               |
 | Validation       | Zod                                                                     |
 | Tests            | Vitest + Testing Library, plus an HTTP smoke script                     |
@@ -39,10 +41,12 @@ Built with **Next.js 15 (App Router) · React 19 · TypeScript · Tailwind v4 ·
 
 The same Drizzle schema and query layer run against two drivers, chosen at runtime by `lib/db/index.ts`:
 
-- **Production / Vercel** - if `DATABASE_URL` is set, it connects to Neon over HTTP (`@neondatabase/serverless` + `drizzle-orm/neon-http`).
+- **Production / Vercel** - if `DATABASE_URL` is set, it connects over TCP with `postgres` + `drizzle-orm/postgres-js` (point it at Supabase, or any hosted Postgres; use the Supabase **transaction pooler** string so serverless functions pool cleanly).
 - **Local / dev / tests** - with no `DATABASE_URL`, it boots an embedded Postgres (PGlite, `@electric-sql/pglite`) into `./.pgdata`, so there is nothing to install.
 
 The connection is opened lazily on first query, so importing route modules during `next build` never boots a database.
+
+**Realtime is optional.** When `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` and `SUPABASE_JWT_SECRET` are set, the browser subscribes to Postgres Changes for the signed-in organization (authorized by a short-lived JWT minted at `/api/realtime/token`). Leave them blank and the app falls back to normal navigation/refresh - no errors.
 
 ## Getting started
 
@@ -64,7 +68,18 @@ npm run dev
 
 Open <http://localhost:3000>.
 
-To point at a hosted Postgres (e.g. Neon) instead, set `DATABASE_URL` in `.env.local` and run `npm run db:migrate` then `npm run db:seed`. The DB scripts load `.env.local` automatically, so they hit the same database the app runs against - `DATABASE_URL` set means Neon, blank means the embedded PGlite.
+To point at a hosted Postgres (Supabase, or anything else) instead, set `DATABASE_URL` in `.env.local` and run `npm run db:migrate` then `npm run db:seed`. The DB scripts load `.env.local` automatically, so they hit the same database the app runs against - `DATABASE_URL` set means that server, blank means the embedded PGlite.
+
+### Realtime + chat (Supabase)
+
+Live chat and live board updates use Supabase Realtime. They are opt-in:
+
+1. Create a project at [supabase.com](https://supabase.com).
+2. Copy the connection string from **Project Settings -> Database -> Connection string -> Transaction pooler** into `DATABASE_URL`, then run `npm run db:migrate` (and `npm run db:seed` for the demo data).
+3. From **Project Settings -> API**, copy the **Project URL**, the **anon public** key and the **JWT Secret** into `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` and `SUPABASE_JWT_SECRET`.
+4. Apply the Realtime + row-level-security policies: `npm run supabase:setup` (or paste `supabase/setup.sql` into the Supabase SQL editor).
+
+Each subscriber gets a JWT carrying their `org` claim, and RLS ensures Realtime only ever pushes their own organization's rows.
 
 ### Demo login
 
@@ -92,13 +107,15 @@ Or hit **Sign up** to create a real account and your own fresh organization (pas
 | `npm run db:seed`             | Reset and load the demo data                          |
 | `npm run db:setup`            | Generate migrations, then seed                        |
 | `npm run db:studio`           | Open Drizzle Studio to browse the data                |
+| `npm run supabase:setup`      | Apply Realtime + RLS policies to Supabase              |
 
-## Deployment (Vercel + Neon)
+## Deployment (Vercel + Supabase)
 
-1. Create a Neon Postgres database and copy its connection string.
-2. Import the repo into Vercel and set `DATABASE_URL` (and `NEXTAUTH_SECRET`, plus `NEXTAUTH_URL` for a custom domain).
-3. Run the migrations and seed once against Neon: `DATABASE_URL=... npm run db:migrate` (seeding is optional).
-4. Deploy. Server Components and Route Handlers connect to Neon over HTTP; the map and charts are client-rendered.
+1. Create a Supabase project and copy the **transaction pooler** connection string.
+2. Import the repo into Vercel and set `DATABASE_URL` (plus `NEXTAUTH_SECRET` and `NEXTAUTH_URL`), and - for realtime - `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` and `SUPABASE_JWT_SECRET`.
+3. Run the migrations once: `DATABASE_URL=... npm run db:migrate`. Seed the demo data if you want it.
+4. Run `npm run supabase:setup` (or paste `supabase/setup.sql` into the SQL editor) to enable Realtime.
+5. Deploy. Server Components and Route Handlers talk to Postgres over the pooler; the map and charts are client-rendered.
 
 ## API
 
@@ -115,6 +132,8 @@ All data endpoints require a signed-in session (`401` when signed out) and are s
 | `GET` / `POST`               | `/api/invoices`                      | List / create invoices                       |
 | `GET` / `PATCH` / `DELETE`   | `/api/invoices/:id`                  | Fetch / update status / delete an invoice    |
 | `GET`                        | `/api/stats`                         | Aggregated dashboard metrics                 |
+| `GET` / `POST`               | `/api/messages`                      | List a room's messages / post a message      |
+| `GET`                        | `/api/realtime/token`                | Mint a short-lived Realtime JWT              |
 | `GET` / `PATCH`              | `/api/org`                           | Organization + members + invites / rename    |
 | `PATCH` / `DELETE`           | `/api/org/members/:id`               | Change a member's role / remove a member     |
 | `GET` / `POST`               | `/api/org/invites`                   | List / create invites (admin)                |
@@ -139,8 +158,11 @@ components/
   forms/              react-hook-form forms + field primitives
   settings/           appearance + organization settings
   invite/             invite-acceptance form
+  chat/               live chat panel (team + job rooms)
+  realtime/           org-scoped live-refresh subscriber
   charts/             recharts wrappers
   ui/                 design-system primitives
+supabase/setup.sql    Realtime publication + RLS policies (Supabase only)
 middleware.ts         protects every dashboard route
 ```
 
@@ -150,7 +172,7 @@ Reads happen in Server Components straight from Postgres, scoped to the session'
 
 - `npm run lint` - no warnings or errors
 - `npm run typecheck` - clean
-- `npm test` - 16 tests across 4 files
-- `npm run smoke` - 37 HTTP checks (auth, page rendering, CRUD, validation, org invites, role enforcement)
-- Production build - 40 routes, 103 kB shared JS
+- `npm test` - 18 tests across 4 files
+- `npm run smoke` - 43 HTTP checks (auth, page rendering, CRUD, validation, org invites, role enforcement, chat)
+- Production build - 43 routes, 103 kB shared JS
 - `npm audit --omit=dev` - **0 vulnerabilities** in production dependencies

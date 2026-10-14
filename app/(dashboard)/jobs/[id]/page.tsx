@@ -5,6 +5,7 @@ import {
   getJob,
   listCustomers,
   listJobEvents,
+  listMessages,
   listTechnicians,
 } from '@/lib/db/queries';
 import { requireSession } from '@/lib/auth/session';
@@ -12,6 +13,7 @@ import { PageHeader } from '@/components/layout/PageHeader';
 import { ConfirmDelete } from '@/components/ConfirmDelete';
 import { EditJobDialog } from '@/components/jobs/EditJobDialog';
 import { JobStatusSelect } from '@/components/jobs/JobStatusSelect';
+import { ChatPanel } from '@/components/chat/ChatPanel';
 import { PriorityDot } from '@/components/StatusBadge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -22,15 +24,16 @@ export default async function JobDetailPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
-  const { orgId } = await requireSession();
+  const { orgId, userId } = await requireSession();
   const { id } = await params;
   const job = await getJob(orgId, id);
   if (!job) notFound();
 
-  const [events, technicians, customers] = await Promise.all([
+  const [events, technicians, customers, chat] = await Promise.all([
     listJobEvents(orgId, id),
     listTechnicians(orgId),
     listCustomers(orgId),
+    listMessages(orgId, `job:${id}`),
   ]);
 
   const details: { label: string; value: React.ReactNode }[] = [
@@ -158,6 +161,15 @@ export default async function JobDetailPage({
               </div>
             </CardContent>
           </Card>
+
+          <ChatPanel
+            roomId={`job:${id}`}
+            initialMessages={chat}
+            currentUserId={userId}
+            title="Job chat"
+            description="Notes with the crew"
+            heightClass="h-[22rem]"
+          />
         </div>
       </div>
     </div>

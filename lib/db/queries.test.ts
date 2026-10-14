@@ -83,6 +83,33 @@ describe('job queries', () => {
   });
 });
 
+describe('messages', () => {
+  it('stores a message and returns it oldest-first', async () => {
+    const created = await queries.createMessage(
+      ORG,
+      { id: 'usr_1', name: 'Ada Obi' },
+      { roomId: 'general', body: 'Hello team' },
+    );
+    expect(created.body).toBe('Hello team');
+    expect(created.authorName).toBe('Ada Obi');
+
+    const list = await queries.listMessages(ORG, 'general');
+    expect(list.map((message) => message.id)).toContain(created.id);
+  });
+
+  it('keeps rooms and organizations separate', async () => {
+    await queries.createMessage(
+      ORG,
+      { id: 'usr_1', name: 'Ada Obi' },
+      { roomId: 'job:job_1', body: 'Ordered the part' },
+    );
+
+    const general = await queries.listMessages(ORG, 'general');
+    expect(general.every((message) => message.roomId === 'general')).toBe(true);
+    expect(await queries.listMessages('org_other', 'general')).toHaveLength(0);
+  });
+});
+
 describe('stats', () => {
   it('aggregates counts from the database', async () => {
     const stats = await queries.getStats(ORG);

@@ -1,10 +1,10 @@
 import { db } from './index';
 
 // Applies the SQL migrations in ./drizzle against whichever database we're on:
-// Neon (DATABASE_URL set) in production, embedded PGlite locally.
+// Postgres (DATABASE_URL set, e.g. Supabase) in production, embedded PGlite locally.
 export async function runMigrations() {
   if (process.env.DATABASE_URL) {
-    const { migrate } = await import('drizzle-orm/neon-http/migrator');
+    const { migrate } = await import('drizzle-orm/postgres-js/migrator');
     await migrate(db as never, { migrationsFolder: './drizzle' });
   } else {
     const { migrate } = await import('drizzle-orm/pglite/migrator');

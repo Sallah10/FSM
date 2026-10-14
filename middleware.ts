@@ -16,6 +16,7 @@ export const config = {
     "/invoices/:path*",
     "/analytics/:path*",
     "/map/:path*",
+    "/chat/:path*",
     "/settings/:path*",
   ],
 };
