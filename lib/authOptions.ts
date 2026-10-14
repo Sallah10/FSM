@@ -14,6 +14,7 @@ declare module "next-auth" {
       id: string;
       role?: string;
       orgId?: string | null;
+      technicianId?: string | null;
       name?: string | null;
       email?: string | null;
       image?: string | null;
@@ -23,6 +24,7 @@ declare module "next-auth" {
     id: string;
     role?: string;
     orgId?: string | null;
+    technicianId?: string | null;
   }
 }
 
@@ -31,6 +33,7 @@ declare module "next-auth/jwt" {
     id?: string;
     role?: string;
     orgId?: string | null;
+    technicianId?: string | null;
   }
 }
 
@@ -58,6 +61,7 @@ const providers: NextAuthOptions["providers"] = [
         email: user.email,
         role: user.role,
         orgId: user.orgId,
+        technicianId: user.technicianId,
       };
     },
   }),
@@ -101,6 +105,7 @@ export const authOptions: NextAuthOptions = {
         user.id = dbUser.id;
         user.role = dbUser.role;
         user.orgId = dbUser.orgId;
+        user.technicianId = dbUser.technicianId;
       }
       return true;
     },
@@ -109,6 +114,7 @@ export const authOptions: NextAuthOptions = {
         token.id = user.id;
         token.role = user.role;
         token.orgId = user.orgId;
+        token.technicianId = user.technicianId;
       }
       return token;
     },
@@ -117,6 +123,7 @@ export const authOptions: NextAuthOptions = {
         session.user.id = token.id as string;
         session.user.role = token.role as string;
         session.user.orgId = token.orgId as string;
+        session.user.technicianId = token.technicianId as string | null;
       }
       return session;
     },

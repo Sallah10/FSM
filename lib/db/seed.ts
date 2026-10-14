@@ -118,6 +118,7 @@ async function seed() {
       passwordHash: hashPassword('demo123'),
       role: 'technician',
       orgId: ORG_ID,
+      technicianId: 'tech_tunde',
     },
   ]);
 

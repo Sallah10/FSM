@@ -1,7 +1,8 @@
-import { and, desc, eq } from 'drizzle-orm';
+import { and, desc, eq, gt, ne, sql } from 'drizzle-orm';
 import { randomUUID } from 'node:crypto';
 import { db } from './index';
 import {
+  chatReads,
   customers,
   invites,
   invoices,
@@ -46,7 +47,10 @@ function jitter(center: number) {
 
 /* ------------------------------- jobs ------------------------------- */
 
-export async function listJobs(orgId: string): Promise<Job[]> {
+export async function listJobs(
+  orgId: string,
+  options?: { technicianId?: string },
+): Promise<Job[]> {
   const rows = await db
     .select({
       id: jobs.id,
@@ -65,7 +69,14 @@ export async function listJobs(orgId: string): Promise<Job[]> {
     .from(jobs)
     .leftJoin(customers, eq(jobs.customerId, customers.id))
     .leftJoin(technicians, eq(jobs.technicianId, technicians.id))
-    .where(eq(jobs.orgId, orgId))
+    .where(
+      and(
+        eq(jobs.orgId, orgId),
+        options?.technicianId
+          ? eq(jobs.technicianId, options.technicianId)
+          : undefined,
+      ),
+    )
     .orderBy(desc(jobs.date));
 
   return rows.map((row) => ({
@@ -557,6 +568,7 @@ export async function createUser(input: {
   passwordHash?: string | null;
   role?: UserRole;
   orgId?: string | null;
+  technicianId?: string | null;
   image?: string | null;
 }) {
   const id = newId('usr');
@@ -567,6 +579,7 @@ export async function createUser(input: {
     passwordHash: input.passwordHash ?? null,
     role: input.role ?? 'dispatcher',
     orgId: input.orgId ?? null,
+    technicianId: input.technicianId ?? null,
     image: input.image ?? null,
   });
 
@@ -675,6 +688,7 @@ function toMessage(row: typeof messages.$inferSelect): Message {
     authorId: row.authorId,
     authorName: row.authorName,
     body: row.body,
+    editedAt: row.editedAt ? row.editedAt.toISOString() : null,
     createdAt: row.createdAt.toISOString(),
   };
 }
@@ -714,6 +728,95 @@ export async function createMessage(
     .where(eq(messages.id, id))
     .limit(1);
   return toMessage(rows[0]);
+}
+
+// Authors may edit or delete their own message; orgId keeps it scoped and the
+// authorId check stops anyone editing someone else's post.
+export async function updateMessage(
+  orgId: string,
+  id: string,
+  authorId: string,
+  body: string,
+): Promise<Message | undefined> {
+  const rows = await db
+    .update(messages)
+    .set({ body, editedAt: new Date() })
+    .where(
+      and(
+        eq(messages.id, id),
+        eq(messages.orgId, orgId),
+        eq(messages.authorId, authorId),
+      ),
+    )
+    .returning();
+  return rows[0] ? toMessage(rows[0]) : undefined;
+}
+
+export async function deleteMessage(
+  orgId: string,
+  id: string,
+  authorId: string,
+): Promise<boolean> {
+  const rows = await db
+    .delete(messages)
+    .where(
+      and(
+        eq(messages.id, id),
+        eq(messages.orgId, orgId),
+        eq(messages.authorId, authorId),
+      ),
+    )
+    .returning({ id: messages.id });
+  return rows.length > 0;
+}
+
+/* ------------------------------- chat reads ------------------------------ */
+
+export async function markRoomRead(
+  orgId: string,
+  userId: string,
+  roomId: string,
+): Promise<void> {
+  await db
+    .insert(chatReads)
+    .values({ userId, roomId, orgId })
+    .onConflictDoUpdate({
+      target: [chatReads.userId, chatReads.roomId],
+      // Use the database clock for both sides of the unread comparison so a
+      // skew between the app server and Postgres can't hide new messages.
+      set: { lastReadAt: sql`now()` },
+    });
+}
+
+// Unread count for a room, ignoring the user's own posts. A user who has never
+// opened the room is treated as having nothing unread yet.
+export async function countUnreadMessages(
+  orgId: string,
+  userId: string,
+  roomId: string,
+): Promise<number> {
+  const rows = await db
+    .select({ lastReadAt: chatReads.lastReadAt })
+    .from(chatReads)
+    .where(and(eq(chatReads.userId, userId), eq(chatReads.roomId, roomId)))
+    .limit(1);
+
+  const lastRead = rows[0]?.lastReadAt;
+  if (!lastRead) return 0;
+
+  const counts = await db
+    .select({ value: sql<number>`count(*)` })
+    .from(messages)
+    .where(
+      and(
+        eq(messages.orgId, orgId),
+        eq(messages.roomId, roomId),
+        gt(messages.createdAt, lastRead),
+        ne(messages.authorId, userId),
+      ),
+    );
+
+  return Number(counts[0]?.value ?? 0);
 }
 
 /* ------------------------------- stats ------------------------------ */

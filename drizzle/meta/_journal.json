@@ -22,6 +22,20 @@
       "when": 1791969167870,
       "tag": "0002_aromatic_shadow_king",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1791990146320,
+      "tag": "0003_spooky_beast",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1791990682854,
+      "tag": "0004_yellow_puma",
+      "breakpoints": true
     }
   ]
 }

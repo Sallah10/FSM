@@ -110,6 +110,69 @@ describe('messages', () => {
   });
 });
 
+describe('message edits and unread', () => {
+  it('updates a message and stamps editedAt', async () => {
+    const created = await queries.createMessage(
+      ORG,
+      { id: 'usr_2', name: 'Bola Ade' },
+      { roomId: 'general', body: 'Draft' },
+    );
+    const updated = await queries.updateMessage(ORG, created.id, 'usr_2', 'Final copy');
+    expect(updated?.body).toBe('Final copy');
+    expect(updated?.editedAt).toBeTruthy();
+  });
+
+  it('refuses to edit another user or another org message', async () => {
+    const created = await queries.createMessage(
+      ORG,
+      { id: 'usr_2', name: 'Bola Ade' },
+      { roomId: 'general', body: 'Mine' },
+    );
+    expect(await queries.updateMessage(ORG, created.id, 'usr_9', 'Hacked')).toBeUndefined();
+    expect(await queries.updateMessage('org_other', created.id, 'usr_2', 'Hacked')).toBeUndefined();
+  });
+
+  it('deletes only the author own message', async () => {
+    const created = await queries.createMessage(
+      ORG,
+      { id: 'usr_3', name: 'Chidi' },
+      { roomId: 'general', body: 'Bye' },
+    );
+    expect(await queries.deleteMessage(ORG, created.id, 'usr_9')).toBe(false);
+    expect(await queries.deleteMessage(ORG, created.id, 'usr_3')).toBe(true);
+    expect(await queries.deleteMessage(ORG, created.id, 'usr_3')).toBe(false);
+  });
+
+  it('counts unread messages, ignoring own posts', async () => {
+    const room = 'job:job_2';
+    expect(await queries.countUnreadMessages(ORG, 'usr_reader', room)).toBe(0);
+
+    await queries.markRoomRead(ORG, 'usr_reader', room);
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    await queries.createMessage(
+      ORG,
+      { id: 'usr_other', name: 'Other' },
+      { roomId: room, body: 'a' },
+    );
+    await queries.createMessage(
+      ORG,
+      { id: 'usr_other', name: 'Other' },
+      { roomId: room, body: 'b' },
+    );
+    expect(await queries.countUnreadMessages(ORG, 'usr_reader', room)).toBe(2);
+
+    await queries.createMessage(
+      ORG,
+      { id: 'usr_reader', name: 'Reader' },
+      { roomId: room, body: 'mine' },
+    );
+    expect(await queries.countUnreadMessages(ORG, 'usr_reader', room)).toBe(2);
+
+    await queries.markRoomRead(ORG, 'usr_reader', room);
+    expect(await queries.countUnreadMessages(ORG, 'usr_reader', room)).toBe(0);
+  });
+});
+
 describe('stats', () => {
   it('aggregates counts from the database', async () => {
     const stats = await queries.getStats(ORG);

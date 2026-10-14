@@ -1,5 +1,6 @@
 import {
   pgTable,
+  primaryKey,
   text,
   timestamp,
   doublePrecision,
@@ -21,6 +22,10 @@ export const users = pgTable('users', {
   passwordHash: text('password_hash'),
   role: text('role').notNull().default('dispatcher'),
   orgId: text('org_id').references(() => organizations.id, { onDelete: 'cascade' }),
+  // Links a technician-role user to the crew member they represent.
+  technicianId: text('technician_id').references(() => technicians.id, {
+    onDelete: 'set null',
+  }),
   image: text('image'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });
@@ -120,8 +125,27 @@ export const messages = pgTable('messages', {
   authorId: text('author_id').notNull(),
   authorName: text('author_name').notNull(),
   body: text('body').notNull(),
+  editedAt: timestamp('edited_at', { withTimezone: true }),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });
+
+// Last time each user opened a room, so the sidebar can show an unread count.
+export const chatReads = pgTable(
+  'chat_reads',
+  {
+    userId: text('user_id').notNull(),
+    roomId: text('room_id').notNull(),
+    orgId: text('org_id')
+      .notNull()
+      .references(() => organizations.id, { onDelete: 'cascade' }),
+    lastReadAt: timestamp('last_read_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => ({
+    pk: primaryKey({ columns: [table.userId, table.roomId] }),
+  }),
+);
 
 export type OrganizationRow = typeof organizations.$inferSelect;
 export type UserRow = typeof users.$inferSelect;
@@ -133,3 +157,4 @@ export type InvoiceRow = typeof invoices.$inferSelect;
 export type InvoiceItemRow = typeof invoiceItems.$inferSelect;
 export type JobEventRow = typeof jobEvents.$inferSelect;
 export type MessageRow = typeof messages.$inferSelect;
+export type ChatReadRow = typeof chatReads.$inferSelect;

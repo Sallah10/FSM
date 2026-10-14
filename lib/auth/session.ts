@@ -13,6 +13,7 @@ export interface SessionContext {
   userId: string;
   orgId: string;
   role: UserRole;
+  technicianId?: string | null;
   name?: string | null;
   email?: string | null;
 }
@@ -27,6 +28,7 @@ export async function getSessionContext(): Promise<SessionContext | null> {
     userId: user.id,
     orgId: user.orgId,
     role: (user.role as UserRole) ?? 'dispatcher',
+    technicianId: user.technicianId ?? null,
     name: user.name,
     email: user.email,
   };
@@ -36,6 +38,14 @@ export async function getSessionContext(): Promise<SessionContext | null> {
 export async function requireSession(): Promise<SessionContext> {
   const context = await getSessionContext();
   if (!context) redirect('/auth/login');
+  return context;
+}
+
+// For server components: also require one of the given roles, otherwise send the
+// user back to their dashboard. API routes use authorize() instead.
+export async function requireRole(...roles: UserRole[]): Promise<SessionContext> {
+  const context = await requireSession();
+  if (!roles.includes(context.role)) redirect('/dashboard');
   return context;
 }
 

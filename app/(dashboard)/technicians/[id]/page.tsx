@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { Mail, Phone, Trash2 } from 'lucide-react';
 import { getTechnician, listJobs } from '@/lib/db/queries';
-import { requireSession } from '@/lib/auth/session';
+import { requireRole } from '@/lib/auth/session';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { ConfirmDelete } from '@/components/ConfirmDelete';
 import { EditTechnicianDialog } from '@/components/technicians/EditTechnicianDialog';
@@ -16,7 +16,7 @@ export default async function TechnicianDetailPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
-  const { orgId } = await requireSession();
+  const { orgId } = await requireRole('admin');
   const { id } = await params;
   const technician = await getTechnician(orgId, id);
   if (!technician) notFound();

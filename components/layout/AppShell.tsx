@@ -95,9 +95,11 @@ function Brand() {
 
 function Nav({
   role,
+  unreadChat = 0,
   onNavigate,
 }: {
   role?: string | null;
+  unreadChat?: number;
   onNavigate?: () => void;
 }) {
   const pathname = usePathname();
@@ -143,6 +145,11 @@ function Nav({
                   )}
                 />
                 {item.label}
+                {item.href === '/chat' && !active && unreadChat > 0 ? (
+                  <span className="ml-auto inline-flex min-w-4 items-center justify-center rounded-full bg-brand px-1 text-[10px] font-semibold leading-4 text-white">
+                    {unreadChat > 9 ? '9+' : unreadChat}
+                  </span>
+                ) : null}
               </Link>
             );
           })}
@@ -155,9 +162,11 @@ function Nav({
 export default function AppShell({
   children,
   user,
+  unreadChat = 0,
 }: {
   children: React.ReactNode;
   user: { name?: string | null; email?: string | null; role?: string | null };
+  unreadChat?: number;
 }) {
   const [mobileOpen, setMobileOpen] = useState(false);
 
@@ -169,7 +178,7 @@ export default function AppShell({
           <Brand />
         </div>
         <div className="flex-1 overflow-y-auto px-2 py-4">
-          <Nav role={user.role} />
+          <Nav role={user.role} unreadChat={unreadChat} />
         </div>
         <div className="border-t border-sidebar-border p-2">
           <div className="flex items-center gap-1">
@@ -219,7 +228,11 @@ export default function AppShell({
               </button>
             </div>
             <div className="flex-1 overflow-y-auto px-2 py-4">
-              <Nav role={user.role} onNavigate={() => setMobileOpen(false)} />
+              <Nav
+                role={user.role}
+                unreadChat={unreadChat}
+                onNavigate={() => setMobileOpen(false)}
+              />
             </div>
             <div className="border-t border-sidebar-border p-2">
               <div className="flex items-center gap-1">

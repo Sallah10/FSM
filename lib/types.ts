@@ -56,6 +56,7 @@ export interface Message {
   authorId: string;
   authorName: string;
   body: string;
+  editedAt?: string | null;
   createdAt: string;
 }
 

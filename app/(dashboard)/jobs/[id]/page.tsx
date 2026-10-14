@@ -24,10 +24,11 @@ export default async function JobDetailPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
-  const { orgId, userId } = await requireSession();
+  const { orgId, userId, role, name } = await requireSession();
   const { id } = await params;
   const job = await getJob(orgId, id);
   if (!job) notFound();
+  const canManage = role === 'admin' || role === 'dispatcher';
 
   const [events, technicians, customers, chat] = await Promise.all([
     listJobEvents(orgId, id),
@@ -59,23 +60,25 @@ export default async function JobDetailPage({
         description={job.customer}
         breadcrumbs={[{ label: 'Jobs', href: '/jobs' }, { label: job.title }]}
         actions={
-          <>
-            <EditJobDialog
-              job={job}
-              customers={customers}
-              technicians={technicians}
-            />
-            <ConfirmDelete
-              url={`/api/jobs/${job.id}`}
-              title="Delete this job?"
-              description="This removes the job and its activity history. This cannot be undone."
-              redirectTo="/jobs"
-            >
-              <Button variant="outline" size="icon" aria-label="Delete job">
-                <Trash2 />
-              </Button>
-            </ConfirmDelete>
-          </>
+          canManage ? (
+            <>
+              <EditJobDialog
+                job={job}
+                customers={customers}
+                technicians={technicians}
+              />
+              <ConfirmDelete
+                url={`/api/jobs/${job.id}`}
+                title="Delete this job?"
+                description="This removes the job and its activity history. This cannot be undone."
+                redirectTo="/jobs"
+              >
+                <Button variant="outline" size="icon" aria-label="Delete job">
+                  <Trash2 />
+                </Button>
+              </ConfirmDelete>
+            </>
+          ) : undefined
         }
       />
 
@@ -166,6 +169,7 @@ export default async function JobDetailPage({
             roomId={`job:${id}`}
             initialMessages={chat}
             currentUserId={userId}
+            currentUserName={name}
             title="Job chat"
             description="Notes with the crew"
             heightClass="h-[22rem]"

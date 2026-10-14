@@ -387,6 +387,31 @@ async function main() {
     `got ${forbiddenInvite.status}`,
   );
 
+  // 10b. Page-level role enforcement: the same guard covers server pages too.
+  for (const path of ["/invoices", "/analytics", "/technicians"]) {
+    const res = await fetch(`${baseUrl}${path}`, {
+      headers: { Cookie: techJar.header() },
+      redirect: "manual",
+    });
+    check(
+      `Technician is redirected from ${path}`,
+      res.status === 307 || res.status === 302,
+      `got ${res.status}`,
+    );
+  }
+
+  for (const path of ["/dashboard", "/jobs", "/chat"]) {
+    const res = await fetch(`${baseUrl}${path}`, {
+      headers: { Cookie: techJar.header() },
+      redirect: "manual",
+    });
+    check(
+      `Technician can open ${path}`,
+      res.status === 200,
+      `got ${res.status}`,
+    );
+  }
+
   // 11. Live chat.
   const anonMessages = await fetch(`${baseUrl}/api/messages`);
   check(
@@ -401,6 +426,7 @@ async function main() {
     headers: { "Content-Type": "application/json", Cookie: jar.header() },
     body: JSON.stringify({ roomId: room, body: "Smoke hello" }),
   });
+  const postJson = (await postMessage.json()) as { message?: { id: string } };
   check(
     "POST /api/messages creates a message",
     postMessage.status === 201,
@@ -428,6 +454,46 @@ async function main() {
     badRoom.status === 400,
     `got ${badRoom.status}`,
   );
+
+  // 11b. Message edit/delete, scoped to the author.
+  const messageId = postJson.message?.id;
+  if (messageId) {
+    const editMessage = await fetch(`${baseUrl}/api/messages/${messageId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", Cookie: jar.header() },
+      body: JSON.stringify({ body: "Smoke edited" }),
+    });
+    const editedJson = (await editMessage.json()) as {
+      message?: { body: string; editedAt?: string | null };
+    };
+    check(
+      "PATCH /api/messages/[id] edits the message",
+      editMessage.status === 200 && editedJson.message?.body === "Smoke edited",
+      `got ${editMessage.status}`,
+    );
+    check("Edited message records editedAt", Boolean(editedJson.message?.editedAt));
+
+    const foreignEdit = await fetch(`${baseUrl}/api/messages/${messageId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", Cookie: techJar.header() },
+      body: JSON.stringify({ body: "hacked" }),
+    });
+    check(
+      "Another user cannot edit the message (404)",
+      foreignEdit.status === 404,
+      `got ${foreignEdit.status}`,
+    );
+
+    const delMessage = await fetch(`${baseUrl}/api/messages/${messageId}`, {
+      method: "DELETE",
+      headers: { Cookie: jar.header() },
+    });
+    check(
+      "DELETE /api/messages/[id] removes the message",
+      delMessage.status === 200,
+      `got ${delMessage.status}`,
+    );
+  }
 
   console.log(`\n  ${passed} passed, ${failed} failed\n`);
   if (failed > 0) {

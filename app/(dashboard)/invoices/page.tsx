@@ -1,13 +1,13 @@
 import Link from 'next/link';
 import { Plus } from 'lucide-react';
 import { listInvoices } from '@/lib/db/queries';
-import { requireSession } from '@/lib/auth/session';
+import { requireRole } from '@/lib/auth/session';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { InvoicesTable } from '@/components/invoices/InvoicesTable';
 import { Button } from '@/components/ui/button';
 
 export default async function InvoicesPage() {
-  const { orgId } = await requireSession();
+  const { orgId } = await requireRole('admin', 'dispatcher');
   const invoices = await listInvoices(orgId);
 
   return (

@@ -17,8 +17,8 @@ Built with **Next.js 15 (App Router) · React 19 · TypeScript · Tailwind v4 ·
 - **Invoices** - line-item invoices with a printable preview, inline status changes, and full CRUD.
 - **Analytics** - revenue by month, jobs by status, and jobs-per-technician charts, all driven by real query results.
 - **Service map** - Leaflet map with clustered, colour-coded markers for jobs, technicians and customers, plus layer toggles, search and "locate me".
-- **Teams & roles** - every sign-up creates its own organization and becomes its admin. Admins invite teammates by email (a copyable link) as **dispatcher** or **technician**, change roles, and remove members. All data is scoped to the organization.
-- **Live chat & realtime** - a team channel and a per-job thread, plus live board updates. With Supabase configured, new messages and job/invoice changes stream in over Realtime (Postgres Changes) without a refresh; without it, everything still works over REST.
+- **Teams & roles** - every sign-up creates its own organization and becomes its admin. Admins invite teammates by email (a copyable link) as **dispatcher** or **technician**, change roles, and remove members. All data is scoped to the organization. The **technician** experience is tailored: a "My jobs" list and a personal dashboard scoped to their assigned work, with invoices, analytics and team management kept out of reach (enforced in middleware, the pages, and the API).
+- **Live chat & realtime** - a team channel and a per-job thread with edit/delete on your own messages, a typing indicator, and an unread badge on the sidebar, plus live board updates. With Supabase configured, new/edited/deleted messages and job/invoice changes stream in over Realtime (Postgres Changes) without a refresh; without it, everything still works over REST.
 - **Settings** - account profile, appearance (light / dark / system), a security panel, and a working **Organization** tab for members, roles and invites. Two-factor settings are scaffolded for the roadmap.
 - **UI** - a consistent, data-dense design system with light/dark mode, a responsive sidebar and a mobile drawer, plus toast feedback on every write. Loading skeletons on every route, a friendly 404 with an auto-redirect countdown, show/hide password fields, and a confirm step before signing out.
 
@@ -46,7 +46,7 @@ The same Drizzle schema and query layer run against two drivers, chosen at runti
 
 The connection is opened lazily on first query, so importing route modules during `next build` never boots a database.
 
-**Realtime is optional.** When `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` and `SUPABASE_JWT_SECRET` are set, the browser subscribes to Postgres Changes for the signed-in organization (authorized by a short-lived JWT minted at `/api/realtime/token`). Leave them blank and the app falls back to normal navigation/refresh - no errors.
+**Realtime is optional.** When `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` and a signing key (`SUPABASE_JWT_PRIVATE_KEY` for ES256, or `SUPABASE_JWT_SECRET` for the legacy HS256 secret) are set, the browser subscribes to Postgres Changes for the signed-in organization (authorized by a short-lived JWT minted at `/api/realtime/token`). ES256 is preferred - generate a key with `npm run gen:signing-key` and import it into Supabase. Leave them blank and the app falls back to normal navigation/refresh - no errors.
 
 ## Getting started
 
@@ -76,7 +76,7 @@ Live chat and live board updates use Supabase Realtime. They are opt-in:
 
 1. Create a project at [supabase.com](https://supabase.com).
 2. Copy the connection string from **Project Settings -> Database -> Connection string -> Transaction pooler** into `DATABASE_URL`, then run `npm run db:migrate` (and `npm run db:seed` for the demo data).
-3. From **Project Settings -> API**, copy the **Project URL**, the **anon public** key and the **JWT Secret** into `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` and `SUPABASE_JWT_SECRET`.
+3. From **Project Settings -> API**, copy the **Project URL** and the **anon public** key into `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY`. For signing, either run `npm run gen:signing-key` and put the printed key in `SUPABASE_JWT_PRIVATE_KEY`, or copy the **Legacy JWT Secret** (Settings -> API -> JWT Settings) into `SUPABASE_JWT_SECRET`.
 4. Apply the Realtime + row-level-security policies: `npm run supabase:setup` (or paste `supabase/setup.sql` into the Supabase SQL editor).
 
 Each subscriber gets a JWT carrying their `org` claim, and RLS ensures Realtime only ever pushes their own organization's rows.
@@ -112,7 +112,7 @@ Or hit **Sign up** to create a real account and your own fresh organization (pas
 ## Deployment (Vercel + Supabase)
 
 1. Create a Supabase project and copy the **transaction pooler** connection string.
-2. Import the repo into Vercel and set `DATABASE_URL` (plus `NEXTAUTH_SECRET` and `NEXTAUTH_URL`), and - for realtime - `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` and `SUPABASE_JWT_SECRET`.
+2. Import the repo into Vercel and set `DATABASE_URL` (plus `NEXTAUTH_SECRET` and `NEXTAUTH_URL`), and - for realtime - `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` and the signing key (`SUPABASE_JWT_PRIVATE_KEY`, or `SUPABASE_JWT_SECRET`).
 3. Run the migrations once: `DATABASE_URL=... npm run db:migrate`. Seed the demo data if you want it.
 4. Run `npm run supabase:setup` (or paste `supabase/setup.sql` into the SQL editor) to enable Realtime.
 5. Deploy. Server Components and Route Handlers talk to Postgres over the pooler; the map and charts are client-rendered.
@@ -133,6 +133,7 @@ All data endpoints require a signed-in session (`401` when signed out) and are s
 | `GET` / `PATCH` / `DELETE`   | `/api/invoices/:id`                  | Fetch / update status / delete an invoice    |
 | `GET`                        | `/api/stats`                         | Aggregated dashboard metrics                 |
 | `GET` / `POST`               | `/api/messages`                      | List a room's messages / post a message      |
+| `PATCH` / `DELETE`           | `/api/messages/:id`                  | Edit / delete your own message               |
 | `GET`                        | `/api/realtime/token`                | Mint a short-lived Realtime JWT              |
 | `GET` / `PATCH`              | `/api/org`                           | Organization + members + invites / rename    |
 | `PATCH` / `DELETE`           | `/api/org/members/:id`               | Change a member's role / remove a member     |
@@ -163,16 +164,16 @@ components/
   charts/             recharts wrappers
   ui/                 design-system primitives
 supabase/setup.sql    Realtime publication + RLS policies (Supabase only)
-middleware.ts         protects every dashboard route
+middleware.ts         protects every dashboard route + redirects disallowed roles
 ```
 
-Reads happen in Server Components straight from Postgres, scoped to the session's organization; writes go through validated Route Handlers that enforce the caller's role and refresh the page. The map and charts are fed by the same query layer, so every screen reflects the database.
+Reads happen in Server Components straight from Postgres, scoped to the session's organization; writes go through validated Route Handlers that enforce the caller's role and refresh the page. The map and charts are fed by the same query layer, so every screen reflects the database. Middleware redirects roles away from areas they cannot use (real 307), and the pages and API re-check the same rules.
 
 ## Verification
 
 - `npm run lint` - no warnings or errors
 - `npm run typecheck` - clean
-- `npm test` - 18 tests across 4 files
-- `npm run smoke` - 43 HTTP checks (auth, page rendering, CRUD, validation, org invites, role enforcement, chat)
-- Production build - 43 routes, 103 kB shared JS
+- `npm test` - 22 tests across 4 files
+- `npm run smoke` - 53 HTTP checks (auth, page rendering, CRUD, validation, org invites, page + API role enforcement, chat edit/delete)
+- Production build - 41 routes, 103 kB shared JS
 - `npm audit --omit=dev` - **0 vulnerabilities** in production dependencies

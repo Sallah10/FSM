@@ -101,6 +101,10 @@ export const createMessageSchema = z.object({
   body: z.string().trim().min(1).max(2000),
 });
 
+export const editMessageSchema = z.object({
+  body: z.string().trim().min(1).max(2000),
+});
+
 export type CreateJobInput = z.infer<typeof createJobSchema>;
 export type UpdateJobInput = z.infer<typeof updateJobSchema>;
 export type CreateCustomerInput = z.infer<typeof createCustomerSchema>;

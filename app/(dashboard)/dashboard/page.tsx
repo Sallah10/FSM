@@ -2,6 +2,7 @@ import Link from 'next/link';
 import {
   ArrowRight,
   Briefcase,
+  CalendarClock,
   CheckCircle2,
   Plus,
   Wallet,
@@ -19,7 +20,87 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { formatCurrency, formatDate } from '@/lib/format';
 
 export default async function DashboardPage() {
-  const { orgId } = await requireSession();
+  const { orgId, role, technicianId } = await requireSession();
+
+  // Technicians only see their own workload, and no financial figures.
+  if (role === 'technician') {
+    const jobs = await listJobs(
+      orgId,
+      technicianId ? { technicianId } : undefined,
+    );
+    const open = jobs.filter(
+      (job) => job.status === 'pending' || job.status === 'in_progress',
+    ).length;
+    const completed = jobs.filter((job) => job.status === 'completed').length;
+    const todayStr = new Date().toISOString().slice(0, 10);
+    const dueToday = jobs.filter((job) => job.date === todayStr).length;
+    const assigned = jobs.slice(0, 8);
+
+    return (
+      <div className="flex flex-col gap-6">
+        <PageHeader
+          title="My dashboard"
+          description="Your assigned work at a glance."
+        />
+
+        <div className="grid gap-4 sm:grid-cols-3">
+          <StatCard
+            label="Open jobs"
+            value={open}
+            hint={`${jobs.length} assigned to you`}
+            icon={Briefcase}
+          />
+          <StatCard
+            label="Completed"
+            value={completed}
+            hint="All time"
+            icon={CheckCircle2}
+          />
+          <StatCard
+            label="Due today"
+            value={dueToday}
+            hint="Scheduled for today"
+            icon={CalendarClock}
+          />
+        </div>
+
+        <Card>
+          <CardHeader className="flex-row items-center justify-between space-y-0">
+            <CardTitle className="text-base">My jobs</CardTitle>
+            <Link
+              href="/jobs"
+              className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
+            >
+              View all <ArrowRight className="size-3.5" />
+            </Link>
+          </CardHeader>
+          <CardContent className="flex flex-col">
+            {assigned.length === 0 ? (
+              <p className="py-6 text-center text-sm text-muted-foreground">
+                Nothing assigned to you yet.
+              </p>
+            ) : (
+              assigned.map((job) => (
+                <Link
+                  key={job.id}
+                  href={`/jobs/${job.id}`}
+                  className="flex items-center justify-between gap-4 border-b py-3 last:border-0 hover:bg-accent/40 -mx-6 px-6"
+                >
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-medium">{job.title}</p>
+                    <p className="truncate text-xs text-muted-foreground">
+                      {job.customer} · {formatDate(job.date)}
+                    </p>
+                  </div>
+                  <StatusBadge status={job.status} />
+                </Link>
+              ))
+            )}
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   const [stats, jobs, invoices] = await Promise.all([
     getStats(orgId),
