@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
-import { SignJWT } from 'jose';
+import { SignJWT, type JWTHeaderParameters } from 'jose';
 import { authorize } from '@/lib/auth/session';
+import { getRealtimeSigner } from '@/lib/supabase/jwt';
 
 export const dynamic = 'force-dynamic';
 
@@ -11,13 +12,16 @@ export async function GET() {
   const auth = await authorize();
   if (!auth.ok) return auth.response;
 
-  const secret = process.env.SUPABASE_JWT_SECRET;
-  if (!secret) {
+  const signer = await getRealtimeSigner();
+  if (!signer) {
     return NextResponse.json(
       { error: 'Realtime is not configured' },
       { status: 503 },
     );
   }
+
+  const header: JWTHeaderParameters = { alg: signer.alg, typ: 'JWT' };
+  if (signer.kid) header.kid = signer.kid;
 
   const token = await new SignJWT({
     role: 'authenticated',
@@ -25,12 +29,12 @@ export async function GET() {
     name: auth.context.name ?? undefined,
     email: auth.context.email ?? undefined,
   })
-    .setProtectedHeader({ alg: 'HS256', typ: 'JWT' })
+    .setProtectedHeader(header)
     .setSubject(auth.context.userId)
     .setAudience('authenticated')
     .setIssuedAt()
     .setExpirationTime('1h')
-    .sign(new TextEncoder().encode(secret));
+    .sign(signer.key);
 
   return NextResponse.json({ token });
 }
