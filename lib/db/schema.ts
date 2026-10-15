@@ -4,6 +4,7 @@ import {
   text,
   timestamp,
   doublePrecision,
+  boolean,
 } from 'drizzle-orm/pg-core';
 
 // A workspace/tenant. Every business that signs up gets its own organization,
@@ -27,6 +28,9 @@ export const users = pgTable('users', {
     onDelete: 'set null',
   }),
   image: text('image'),
+  // TOTP two-factor auth. Secret is encrypted at rest (see lib/auth/secret-box).
+  twoFactorSecret: text('two_factor_secret'),
+  twoFactorEnabled: boolean('two_factor_enabled').notNull().default(false),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });
 

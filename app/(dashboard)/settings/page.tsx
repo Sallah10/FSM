@@ -1,9 +1,10 @@
 import { getServerSession } from 'next-auth';
-import { CheckCircle2, Clock } from 'lucide-react';
+import { CheckCircle2 } from 'lucide-react';
 import { authOptions } from '@/lib/authOptions';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { AppearanceSettings } from '@/components/settings/AppearanceSettings';
 import { OrganizationSettings } from '@/components/settings/OrganizationSettings';
+import { TwoFactorSettings } from '@/components/settings/TwoFactorSettings';
 import {
   Card,
   CardContent,
@@ -19,15 +20,6 @@ function Detail({ label, value }: { label: string; value?: string | null }) {
     <div className="flex items-center justify-between gap-4 border-b py-3 last:border-0">
       <span className="text-sm text-muted-foreground">{label}</span>
       <span className="text-sm font-medium">{value || '—'}</span>
-    </div>
-  );
-}
-
-function Planned({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="flex items-start gap-2 rounded-md border border-dashed p-3 text-sm text-muted-foreground">
-      <Clock className="mt-0.5 size-4 shrink-0" />
-      <span>{children}</span>
     </div>
   );
 }
@@ -97,11 +89,7 @@ export default async function SettingsPage() {
                   <CheckCircle2 className="size-3.5" /> Set
                 </span>
               </div>
-              <Planned>
-                Change password and two-factor authentication (authenticator app /
-                TOTP) are coming next. TOTP will let you scan a QR code and use
-                codes from your phone — no email required.
-              </Planned>
+              <TwoFactorSettings />
             </CardContent>
           </Card>
         </TabsContent>

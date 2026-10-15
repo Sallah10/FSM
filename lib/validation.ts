@@ -105,6 +105,14 @@ export const editMessageSchema = z.object({
   body: z.string().trim().min(1).max(2000),
 });
 
+// Two-factor auth: a 6-digit TOTP code from an authenticator app.
+export const twoFactorCodeSchema = z.string().trim().regex(/^\d{6}$/);
+
+export const loginCheckSchema = z.object({
+  email: z.string().trim().email(),
+  password: z.string().min(1),
+});
+
 export type CreateJobInput = z.infer<typeof createJobSchema>;
 export type UpdateJobInput = z.infer<typeof updateJobSchema>;
 export type CreateCustomerInput = z.infer<typeof createCustomerSchema>;

@@ -25,11 +25,29 @@ function LoginForm() {
   const justRegistered = searchParams.get('registered') === '1';
 
   const [form, setForm] = useState({ email: '', password: '' });
+  const [code, setCode] = useState('');
+  const [phase, setPhase] = useState<'credentials' | 'twofa'>('credentials');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setForm({ ...form, [e.target.name]: e.target.value });
+  };
+
+  const completeSignIn = async (twoFactorCode?: string) => {
+    const result = await signIn('credentials', {
+      email: form.email,
+      password: form.password,
+      code: twoFactorCode ?? '',
+      redirect: false,
+    });
+
+    if (result?.error) {
+      setError(twoFactorCode ? 'Invalid or expired code.' : 'Invalid email or password.');
+      return;
+    }
+    router.push('/dashboard');
+    router.refresh();
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -38,21 +56,41 @@ function LoginForm() {
     setError('');
 
     try {
-      const result = await signIn('credentials', {
-        email: form.email,
-        password: form.password,
-        redirect: false,
-      });
+      if (phase === 'credentials') {
+        // Find out whether this account needs a second factor before signing in.
+        const res = await fetch('/api/account/2fa/check', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(form),
+        });
+        const data = await res.json().catch(() => null);
 
-      if (result?.error) {
-        setError('Invalid email or password.');
-      } else {
-        router.push('/dashboard');
-        router.refresh();
+        if (data?.status === 'invalid') {
+          setError('Invalid email or password.');
+          return;
+        }
+        if (data?.status === 'need_2fa') {
+          setPhase('twofa');
+          return;
+        }
+        await completeSignIn();
+        return;
       }
+
+      if (!/^\d{6}$/.test(code)) {
+        setError('Enter the 6-digit code from your authenticator app.');
+        return;
+      }
+      await completeSignIn(code);
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const backToCredentials = () => {
+    setPhase('credentials');
+    setCode('');
+    setError('');
   };
 
   return (
@@ -83,36 +121,77 @@ function LoginForm() {
               </p>
             ) : null}
 
-            <FormRow label="Email" htmlFor="email">
-              <Input
-                id="email"
-                name="email"
-                type="email"
-                autoComplete="email"
-                placeholder="you@example.com"
-                value={form.email}
-                onChange={handleChange}
-                disabled={isLoading}
-              />
-            </FormRow>
+            {phase === 'credentials' ? (
+              <>
+                <FormRow label="Email" htmlFor="email">
+                  <Input
+                    id="email"
+                    name="email"
+                    type="email"
+                    autoComplete="email"
+                    placeholder="you@example.com"
+                    value={form.email}
+                    onChange={handleChange}
+                    disabled={isLoading}
+                  />
+                </FormRow>
 
-            <FormRow label="Password" htmlFor="password">
-              <PasswordInput
-                id="password"
-                name="password"
-                autoComplete="current-password"
-                placeholder="••••••••"
-                value={form.password}
-                onChange={handleChange}
-                disabled={isLoading}
-              />
-            </FormRow>
+                <FormRow label="Password" htmlFor="password">
+                  <PasswordInput
+                    id="password"
+                    name="password"
+                    autoComplete="current-password"
+                    placeholder="••••••••"
+                    value={form.password}
+                    onChange={handleChange}
+                    disabled={isLoading}
+                  />
+                </FormRow>
+              </>
+            ) : (
+              <>
+                <p className="text-sm text-muted-foreground">
+                  Enter the 6-digit code from your authenticator app for{' '}
+                  <span className="font-medium text-foreground">{form.email}</span>.
+                </p>
+                <FormRow label="Verification code" htmlFor="code">
+                  <Input
+                    id="code"
+                    name="code"
+                    type="text"
+                    inputMode="numeric"
+                    autoComplete="one-time-code"
+                    maxLength={6}
+                    placeholder="123456"
+                    className="tracking-[0.3em]"
+                    value={code}
+                    onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))}
+                    disabled={isLoading}
+                    autoFocus
+                  />
+                </FormRow>
+              </>
+            )}
 
             <Button type="submit" className="w-full" disabled={isLoading}>
-              {isLoading ? 'Signing in…' : 'Sign in'}
+              {isLoading
+                ? 'Signing in…'
+                : phase === 'twofa'
+                  ? 'Verify and sign in'
+                  : 'Sign in'}
             </Button>
 
-            {googleEnabled ? (
+            {phase === 'twofa' ? (
+              <button
+                type="button"
+                onClick={backToCredentials}
+                className="text-center text-sm text-muted-foreground hover:text-foreground"
+              >
+                Use a different account
+              </button>
+            ) : null}
+
+            {googleEnabled && phase === 'credentials' ? (
               <Button
                 type="button"
                 variant="outline"
@@ -124,10 +203,12 @@ function LoginForm() {
               </Button>
             ) : null}
 
-            <div className="rounded-md border bg-muted/40 px-3 py-2 text-center text-xs text-muted-foreground">
-              Demo - <span className="font-mono">demo@quickset.com</span> /{' '}
-              <span className="font-mono">demo123</span>
-            </div>
+            {phase === 'credentials' ? (
+              <div className="rounded-md border bg-muted/40 px-3 py-2 text-center text-xs text-muted-foreground">
+                Demo - <span className="font-mono">demo@quickset.com</span> /{' '}
+                <span className="font-mono">demo123</span>
+              </div>
+            ) : null}
           </form>
         </CardContent>
       </Card>

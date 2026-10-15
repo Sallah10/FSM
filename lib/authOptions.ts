@@ -7,6 +7,8 @@ import {
   getUserByEmail,
 } from "@/lib/db/queries";
 import { verifyPassword } from "@/lib/auth/password";
+import { decryptSecret } from "@/lib/auth/secret-box";
+import { verifyTotp } from "@/lib/auth/totp";
 
 declare module "next-auth" {
   interface Session {
@@ -43,6 +45,7 @@ const providers: NextAuthOptions["providers"] = [
     credentials: {
       email: { label: "Email", type: "email" },
       password: { label: "Password", type: "password" },
+      code: { label: "Two-factor code", type: "text" },
     },
     async authorize(credentials) {
       const email = credentials?.email?.trim().toLowerCase();
@@ -53,6 +56,16 @@ const providers: NextAuthOptions["providers"] = [
       const user = await getUserByEmail(email);
       if (!user || !verifyPassword(password, user.passwordHash)) {
         return null;
+      }
+
+      // When 2FA is on, the password alone is not enough - require a valid code.
+      if (user.twoFactorEnabled) {
+        const secret = user.twoFactorSecret
+          ? decryptSecret(user.twoFactorSecret)
+          : null;
+        if (!secret || !credentials?.code || !verifyTotp(secret, credentials.code)) {
+          return null;
+        }
       }
 
       return {

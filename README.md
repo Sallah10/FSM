@@ -19,7 +19,9 @@ Built with **Next.js 15 (App Router) · React 19 · TypeScript · Tailwind v4 ·
 - **Service map** - Leaflet map with clustered, colour-coded markers for jobs, technicians and customers, plus layer toggles, search and "locate me".
 - **Teams & roles** - every sign-up creates its own organization and becomes its admin. Admins invite teammates by email (a copyable link) as **dispatcher** or **technician**, change roles, and remove members. All data is scoped to the organization. The **technician** experience is tailored: a "My jobs" list and a personal dashboard scoped to their assigned work, with invoices, analytics and team management kept out of reach (enforced in middleware, the pages, and the API).
 - **Live chat & realtime** - a team channel and a per-job thread with edit/delete on your own messages, a typing indicator, and an unread badge on the sidebar, plus live board updates. With Supabase configured, new/edited/deleted messages and job/invoice changes stream in over Realtime (Postgres Changes) without a refresh; without it, everything still works over REST.
-- **Settings** - account profile, appearance (light / dark / system), a security panel, and a working **Organization** tab for members, roles and invites. Two-factor settings are scaffolded for the roadmap.
+- **Two-factor authentication** - turn on TOTP from **Settings → Security** by scanning a QR code (or entering a key) into Google Authenticator, Authy or 1Password. Once on, signing in asks for a 6-digit code after the password; secrets are encrypted at rest, and codes tolerate one step of clock drift.
+- **Installable (PWA)** - a web manifest, maskable icons and a service worker make QuickSet installable to the home screen or desktop, with an "add to home screen" prompt and a friendly offline fallback. Static assets are cached stale-while-revalidate; API responses and rendered HTML are never cached.
+- **Settings** - account profile, appearance (light / dark / system), a working **Security** tab (two-factor setup), and a working **Organization** tab for members, roles and invites.
 - **UI** - a consistent, data-dense design system with light/dark mode, a responsive sidebar and a mobile drawer, plus toast feedback on every write. Loading skeletons on every route, a friendly 404 with an auto-redirect countdown, show/hide password fields, and a confirm step before signing out.
 
 ## Tech stack
@@ -33,6 +35,8 @@ Built with **Next.js 15 (App Router) · React 19 · TypeScript · Tailwind v4 ·
 | Auth             | NextAuth (JWT sessions) - credentials + optional Google                 |
 | Database         | PostgreSQL - **Supabase** in production, embedded **PGlite** locally    |
 | Realtime         | Supabase Realtime (Postgres Changes) for live chat + board updates      |
+| Auth (2FA)       | TOTP authenticator apps (RFC 6238), qrcode.react for the setup QR        |
+| PWA              | Web manifest + service worker (install + offline fallback)              |
 | ORM / migrations | Drizzle ORM + Drizzle Kit                                               |
 | Validation       | Zod                                                                     |
 | Tests            | Vitest + Testing Library, plus an HTTP smoke script                     |
@@ -135,6 +139,8 @@ All data endpoints require a signed-in session (`401` when signed out) and are s
 | `GET` / `POST`               | `/api/messages`                      | List a room's messages / post a message      |
 | `PATCH` / `DELETE`           | `/api/messages/:id`                  | Edit / delete your own message               |
 | `GET`                        | `/api/realtime/token`                | Mint a short-lived Realtime JWT              |
+| `GET` / `POST`               | `/api/account/2fa`                   | Two-factor status / begin, enable, disable   |
+| `POST`                       | `/api/account/2fa/check`             | Public: does this account need a 2FA code?   |
 | `GET` / `PATCH`              | `/api/org`                           | Organization + members + invites / rename    |
 | `PATCH` / `DELETE`           | `/api/org/members/:id`               | Change a member's role / remove a member     |
 | `GET` / `POST`               | `/api/org/invites`                   | List / create invites (admin)                |
@@ -150,19 +156,23 @@ app/
   api/                route handlers (REST, Zod-validated, session + role-guarded)
   auth/               login + signup screens
   invite/[token]/     public invite-acceptance page
+  offline/            offline fallback page (service worker)
+  manifest.ts         web-app manifest (PWA)
 lib/
   db/                 Drizzle schema, driver selection, queries, migrate, seed
-  auth/               password hashing + session/role helpers
+  auth/               password hashing, session/role helpers, TOTP + secret box
   authOptions.ts      NextAuth configuration
 components/
   layout/             app shell, page header, dialogs
   forms/              react-hook-form forms + field primitives
-  settings/           appearance + organization settings
+  settings/           appearance + organization + two-factor settings
   invite/             invite-acceptance form
   chat/               live chat panel (team + job rooms)
   realtime/           org-scoped live-refresh subscriber
+  pwa/                service-worker registration + install prompt
   charts/             recharts wrappers
   ui/                 design-system primitives
+public/sw.js          service worker (offline + asset caching)
 supabase/setup.sql    Realtime publication + RLS policies (Supabase only)
 middleware.ts         protects every dashboard route + redirects disallowed roles
 ```
@@ -173,7 +183,7 @@ Reads happen in Server Components straight from Postgres, scoped to the session'
 
 - `npm run lint` - no warnings or errors
 - `npm run typecheck` - clean
-- `npm test` - 22 tests across 4 files
-- `npm run smoke` - 53 HTTP checks (auth, page rendering, CRUD, validation, org invites, page + API role enforcement, chat edit/delete)
-- Production build - 41 routes, 103 kB shared JS
+- `npm test` - 32 tests across 5 files (queries, formatting, TOTP vectors)
+- `npm run smoke` - 63 HTTP checks (auth, page rendering, CRUD, validation, org invites, page + API role enforcement, chat edit/delete, two-factor setup + login)
+- Production build - 47 routes (26 pages incl. PWA assets + 21 API), 103 kB shared JS
 - `npm audit --omit=dev` - **0 vulnerabilities** in production dependencies

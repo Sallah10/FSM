@@ -19,6 +19,7 @@ import {
 import type { LucideIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { UserMenu } from '@/components/layout/UserMenu';
+import { InstallPrompt } from '@/components/pwa/InstallPrompt';
 import ThemeToggle from '@/components/ThemeToggle';
 
 type NavItem = {
@@ -185,6 +186,7 @@ export default function AppShell({
             <div className="min-w-0 flex-1">
               <UserMenu name={user.name} email={user.email} role={user.role} />
             </div>
+            <InstallPrompt />
             <ThemeToggle />
           </div>
         </div>
@@ -239,6 +241,7 @@ export default function AppShell({
                 <div className="min-w-0 flex-1">
                   <UserMenu name={user.name} email={user.email} role={user.role} />
                 </div>
+                <InstallPrompt />
                 <ThemeToggle />
               </div>
             </div>

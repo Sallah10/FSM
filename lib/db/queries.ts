@@ -586,6 +586,17 @@ export async function createUser(input: {
   return (await getUserById(id))!;
 }
 
+export async function setTwoFactor(
+  userId: string,
+  secret: string | null,
+  enabled: boolean,
+): Promise<void> {
+  await db
+    .update(users)
+    .set({ twoFactorSecret: secret, twoFactorEnabled: enabled })
+    .where(eq(users.id, userId));
+}
+
 export async function listMembers(orgId: string): Promise<OrgMember[]> {
   const rows = await db
     .select({

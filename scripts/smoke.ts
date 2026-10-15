@@ -2,6 +2,8 @@
 // Usage: start the app (npm start), then `npm run smoke`.
 // Override the target with SMOKE_BASE_URL, the login with DEMO_EMAIL / DEMO_PASSWORD.
 
+import { generateTotp } from "../lib/auth/totp";
+
 const baseUrl = process.env.SMOKE_BASE_URL ?? "http://localhost:3100";
 const email = process.env.DEMO_EMAIL ?? "demo@quickset.com";
 const password = process.env.DEMO_PASSWORD ?? "demo123";
@@ -494,6 +496,174 @@ async function main() {
       `got ${delMessage.status}`,
     );
   }
+
+  // 12. Two-factor authentication, exercised on a throwaway account so the
+  // seeded demo user is never left with 2FA switched on.
+  const tfaEmail = `tfa_${Date.now()}@quickset.com`;
+  const tfaSignup = await fetch(`${baseUrl}/api/signup`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      name: "TFA Tester",
+      email: tfaEmail,
+      password: "password123",
+    }),
+  });
+  check(
+    "Signup for the 2FA test account",
+    tfaSignup.status === 201,
+    `got ${tfaSignup.status}`,
+  );
+
+  const tfaJar = new CookieJar();
+  const tfaCsrfRes = await fetch(`${baseUrl}/api/auth/csrf`);
+  tfaJar.store(tfaCsrfRes);
+  const { csrfToken: tfaCsrf } = (await tfaCsrfRes.json()) as {
+    csrfToken: string;
+  };
+  const tfaLogin = await fetch(`${baseUrl}/api/auth/callback/credentials`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/x-www-form-urlencoded",
+      Cookie: tfaJar.header(),
+    },
+    body: new URLSearchParams({
+      csrfToken: tfaCsrf,
+      email: tfaEmail,
+      password: "password123",
+      callbackUrl: `${baseUrl}/dashboard`,
+      json: "true",
+    }),
+    redirect: "manual",
+  });
+  tfaJar.store(tfaLogin);
+  check("2FA account signs in", tfaLogin.status === 200, `got ${tfaLogin.status}`);
+
+  const statusBefore = await fetch(`${baseUrl}/api/account/2fa`, {
+    headers: { Cookie: tfaJar.header() },
+  });
+  const beforeJson = (await statusBefore.json()) as { enabled?: boolean };
+  check("2FA starts disabled", beforeJson.enabled === false);
+
+  const wrongCheck = await fetch(`${baseUrl}/api/account/2fa/check`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email: tfaEmail, password: "wrong-password" }),
+  });
+  check(
+    "2FA check rejects a wrong password",
+    ((await wrongCheck.json()) as { status?: string }).status === "invalid",
+  );
+
+  const beginRes = await fetch(`${baseUrl}/api/account/2fa`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Cookie: tfaJar.header() },
+    body: JSON.stringify({ action: "begin" }),
+  });
+  const beginJson = (await beginRes.json()) as { secret?: string };
+  const secret = beginJson.secret ?? "";
+  check("2FA begin returns a secret", beginRes.status === 200 && !!secret);
+
+  const enableRes = await fetch(`${baseUrl}/api/account/2fa`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Cookie: tfaJar.header() },
+    body: JSON.stringify({ action: "enable", code: generateTotp(secret) }),
+  });
+  const enableJson = (await enableRes.json()) as { enabled?: boolean };
+  check(
+    "2FA enable accepts a valid code",
+    enableRes.status === 200 && enableJson.enabled === true,
+    JSON.stringify(enableJson),
+  );
+
+  const needCheck = await fetch(`${baseUrl}/api/account/2fa/check`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email: tfaEmail, password: "password123" }),
+  });
+  check(
+    "2FA check reports need_2fa once enabled",
+    ((await needCheck.json()) as { status?: string }).status === "need_2fa",
+  );
+
+  // Password alone must no longer produce a session.
+  const noCodeJar = new CookieJar();
+  const noCodeCsrfRes = await fetch(`${baseUrl}/api/auth/csrf`);
+  noCodeJar.store(noCodeCsrfRes);
+  const { csrfToken: noCodeCsrf } = (await noCodeCsrfRes.json()) as {
+    csrfToken: string;
+  };
+  const noCodeLogin = await fetch(`${baseUrl}/api/auth/callback/credentials`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/x-www-form-urlencoded",
+      Cookie: noCodeJar.header(),
+    },
+    body: new URLSearchParams({
+      csrfToken: noCodeCsrf,
+      email: tfaEmail,
+      password: "password123",
+      callbackUrl: `${baseUrl}/dashboard`,
+      json: "true",
+    }),
+    redirect: "manual",
+  });
+  noCodeJar.store(noCodeLogin);
+  const noCodeSession = await fetch(`${baseUrl}/api/auth/session`, {
+    headers: { Cookie: noCodeJar.header() },
+  });
+  const noCodeJson = (await noCodeSession.json()) as { user?: unknown };
+  check(
+    "Login without a 2FA code is rejected",
+    !noCodeJson?.user,
+    JSON.stringify(noCodeJson),
+  );
+
+  // With the right code it succeeds.
+  const codeJar = new CookieJar();
+  const codeCsrfRes = await fetch(`${baseUrl}/api/auth/csrf`);
+  codeJar.store(codeCsrfRes);
+  const { csrfToken: codeCsrf } = (await codeCsrfRes.json()) as {
+    csrfToken: string;
+  };
+  const codeLogin = await fetch(`${baseUrl}/api/auth/callback/credentials`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/x-www-form-urlencoded",
+      Cookie: codeJar.header(),
+    },
+    body: new URLSearchParams({
+      csrfToken: codeCsrf,
+      email: tfaEmail,
+      password: "password123",
+      code: generateTotp(secret),
+      callbackUrl: `${baseUrl}/dashboard`,
+      json: "true",
+    }),
+    redirect: "manual",
+  });
+  codeJar.store(codeLogin);
+  const codeSession = await fetch(`${baseUrl}/api/auth/session`, {
+    headers: { Cookie: codeJar.header() },
+  });
+  const codeJson = (await codeSession.json()) as { user?: { email?: string } };
+  check(
+    "Login with a valid 2FA code succeeds",
+    codeJson?.user?.email === tfaEmail,
+    JSON.stringify(codeJson),
+  );
+
+  const disableRes = await fetch(`${baseUrl}/api/account/2fa`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Cookie: tfaJar.header() },
+    body: JSON.stringify({ action: "disable", code: generateTotp(secret) }),
+  });
+  const disableJson = (await disableRes.json()) as { enabled?: boolean };
+  check(
+    "2FA disable works",
+    disableRes.status === 200 && disableJson.enabled === false,
+    JSON.stringify(disableJson),
+  );
 
   console.log(`\n  ${passed} passed, ${failed} failed\n`);
   if (failed > 0) {
