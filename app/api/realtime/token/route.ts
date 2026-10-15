@@ -5,9 +5,8 @@ import { getRealtimeSigner } from '@/lib/supabase/jwt';
 
 export const dynamic = 'force-dynamic';
 
-// Hands the browser a short-lived Supabase-compatible JWT so Realtime can
-// authorize private channels. The `org` claim lets RLS on realtime.messages
-// scope each subscriber to their own organization's channels.
+// Mints a short-lived Supabase-compatible JWT for Realtime; its `org` claim lets
+// RLS scope each subscriber to their own organization.
 export async function GET() {
   const auth = await authorize();
   if (!auth.ok) return auth.response;

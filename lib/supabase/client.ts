@@ -3,8 +3,6 @@ import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
-// Realtime is optional: with no Supabase env the app still works, it just falls
-// back to fetching on navigation instead of live push.
 export function isRealtimeConfigured(): boolean {
   return Boolean(url && anonKey);
 }
@@ -22,7 +20,6 @@ export function getSupabase(): SupabaseClient | null {
   return client;
 }
 
-// Exchange our NextAuth session for a Supabase-compatible JWT.
 export async function fetchRealtimeToken(): Promise<string | null> {
   try {
     const res = await fetch('/api/realtime/token');

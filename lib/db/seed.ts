@@ -13,10 +13,8 @@ import {
 } from './schema';
 import { hashPassword } from '../auth/password';
 
-// Everything below belongs to this one demo organization.
 const ORG_ID = 'org_demo';
 
-// Demo data. All of it is made up.
 const customerRows = [
   { id: 'cus_ibrahim', orgId: ORG_ID, name: 'Ibrahim Musa', email: 'ibrahim@example.com', phone: '08012312345', address: '12 Adeola Odeku, Victoria Island', lat: 6.4281, lng: 3.4219 },
   { id: 'cus_fatima', orgId: ORG_ID, name: 'Fatima Bello', email: 'fatima@example.com', phone: '08045678901', address: '8 Herbert Macaulay, Yaba', lat: 6.5095, lng: 3.3711 },
@@ -86,14 +84,12 @@ async function seed() {
     );
   }
 
-  // activity trail for a couple of jobs so the detail page has some history
   await db.insert(jobEvents).values([
     { id: 'evt_seed_1', jobId: 'job_ac_repair', type: 'created', message: 'Job created' },
     { id: 'evt_seed_2', jobId: 'job_ac_repair', type: 'assignment', message: 'Assigned to Tunde Bakare' },
     { id: 'evt_seed_3', jobId: 'job_generator', type: 'status', message: 'Status changed from pending to in progress' },
   ]);
 
-  // the demo login shown on the README / login page, plus a teammate per role.
   await db.insert(users).values([
     {
       id: 'usr_demo',

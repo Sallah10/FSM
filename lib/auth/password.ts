@@ -1,6 +1,6 @@
 import { randomBytes, scryptSync, timingSafeEqual } from 'node:crypto';
 
-// scrypt from node itself, so we don't pull in bcrypt just for a demo.
+// scrypt is built into Node, so there's no need for a bcrypt dependency.
 export function hashPassword(password: string): string {
   const salt = randomBytes(16).toString('hex');
   const derived = scryptSync(password, salt, 64).toString('hex');

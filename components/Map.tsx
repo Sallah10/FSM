@@ -54,7 +54,6 @@ function MarkerClusters({ markers }: { markers: MarkerData[] }) {
     if (!map || !markers.length) return;
 
     try {
-      // Create cluster group using Leaflet's extended method
       const markerClusterGroup = L.markerClusterGroup({
         maxClusterRadius: 80,
         spiderfyOnMaxZoom: true,

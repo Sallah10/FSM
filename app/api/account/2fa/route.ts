@@ -21,9 +21,7 @@ export async function GET() {
   });
 }
 
-// begin   -> mint a new secret and return the otpauth URL to scan
-// enable  -> confirm a code, turning 2FA on
-// disable -> confirm a code, turning 2FA off and clearing the secret
+// POST body: { action: 'begin' | 'enable' | 'disable', code? }
 export async function POST(req: Request) {
   const auth = await authorize();
   if (!auth.ok) return auth.response;

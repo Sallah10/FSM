@@ -45,8 +45,6 @@ function jitter(center: number) {
   return center + (Math.random() - 0.5) * 0.08;
 }
 
-/* ------------------------------- jobs ------------------------------- */
-
 export async function listJobs(
   orgId: string,
   options?: { technicianId?: string },
@@ -203,8 +201,6 @@ export async function deleteJob(orgId: string, id: string): Promise<void> {
   await db.delete(jobs).where(and(eq(jobs.id, id), eq(jobs.orgId, orgId)));
 }
 
-/* --------------------------- job activity --------------------------- */
-
 export async function listJobEvents(
   orgId: string,
   jobId: string,
@@ -238,8 +234,6 @@ export async function createJobEvent(
     message,
   });
 }
-
-/* ----------------------------- customers ---------------------------- */
 
 export async function listCustomers(orgId: string): Promise<Customer[]> {
   return db
@@ -312,8 +306,6 @@ export async function deleteCustomer(orgId: string, id: string): Promise<void> {
     .where(and(eq(customers.id, id), eq(customers.orgId, orgId)));
 }
 
-/* ---------------------------- technicians --------------------------- */
-
 export async function listTechnicians(orgId: string): Promise<Technician[]> {
   return db
     .select()
@@ -383,8 +375,6 @@ export async function deleteTechnician(orgId: string, id: string): Promise<void>
     .delete(technicians)
     .where(and(eq(technicians.id, id), eq(technicians.orgId, orgId)));
 }
-
-/* ------------------------------ invoices ---------------------------- */
 
 async function itemsByInvoice(orgId: string) {
   const grouped = new Map<string, { name: string; price: number }[]>();
@@ -518,8 +508,6 @@ export async function deleteInvoice(orgId: string, id: string): Promise<void> {
     .where(and(eq(invoices.id, id), eq(invoices.orgId, orgId)));
 }
 
-/* --------------------------- organizations -------------------------- */
-
 export async function createOrganization(name: string): Promise<Organization> {
   const id = newId('org');
   await db.insert(organizations).values({ id, name });
@@ -545,8 +533,6 @@ export async function renameOrganization(
 ): Promise<void> {
   await db.update(organizations).set({ name }).where(eq(organizations.id, id));
 }
-
-/* ------------------------------- users ------------------------------ */
 
 export async function getUserByEmail(email: string) {
   const rows = await db
@@ -628,8 +614,6 @@ export async function removeMember(orgId: string, userId: string): Promise<void>
     .where(and(eq(users.id, userId), eq(users.orgId, orgId)));
 }
 
-/* ------------------------------- invites ---------------------------- */
-
 function toInvite(row: typeof invites.$inferSelect): Invite {
   return {
     id: row.id,
@@ -689,8 +673,6 @@ export async function revokeInvite(orgId: string, id: string): Promise<void> {
     .set({ status: 'revoked' })
     .where(and(eq(invites.id, id), eq(invites.orgId, orgId)));
 }
-
-/* ------------------------------ messages ---------------------------- */
 
 function toMessage(row: typeof messages.$inferSelect): Message {
   return {
@@ -781,8 +763,6 @@ export async function deleteMessage(
   return rows.length > 0;
 }
 
-/* ------------------------------- chat reads ------------------------------ */
-
 export async function markRoomRead(
   orgId: string,
   userId: string,
@@ -829,8 +809,6 @@ export async function countUnreadMessages(
 
   return Number(counts[0]?.value ?? 0);
 }
-
-/* ------------------------------- stats ------------------------------ */
 
 export async function getStats(orgId: string): Promise<DashboardStats> {  const [allJobs, allInvoices, customerList, technicianList] = await Promise.all([
     listJobs(orgId),

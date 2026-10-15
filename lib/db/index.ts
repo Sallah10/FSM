@@ -7,9 +7,6 @@ import * as schema from './schema';
 
 export type Database = PgDatabase<PgQueryResultHKT, typeof schema>;
 
-// Any Postgres over TCP (Supabase in production, Neon, local Docker, ...) when
-// DATABASE_URL is set. Locally (and in tests) we run an embedded Postgres
-// (PGlite) so there's nothing to install. Same schema, same queries.
 function createDb(): Database {
   const url = process.env.DATABASE_URL;
   if (url) {
@@ -36,8 +33,8 @@ function getDb(): Database {
   return globalForDb.__quicksetDb;
 }
 
-// Lazily open the connection on first query. This keeps `next build` (which
-// imports route modules but never runs them) from booting PGlite/Postgres early.
+// Lazily open the connection on first query so `next build` (which imports
+// route modules but never runs them) doesn't boot a database.
 export const db = new Proxy({} as Database, {
   get(_target, prop) {
     const real = getDb() as unknown as Record<string | symbol, unknown>;

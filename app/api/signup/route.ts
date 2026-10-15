@@ -5,8 +5,7 @@ import { signupSchema } from '@/lib/validation';
 
 export const dynamic = 'force-dynamic';
 
-// Public endpoint: registers a new account, its organization, and makes the
-// new user the admin of that organization.
+// Public: create an account plus its own organization (the user becomes admin).
 export async function POST(req: Request) {
   const body = await req.json().catch(() => null);
   const parsed = signupSchema.safeParse(body);

@@ -1,8 +1,7 @@
 import { createCipheriv, createDecipheriv, createHash, randomBytes } from 'node:crypto';
 
-// Encrypts the TOTP secret before it is stored, so a database leak alone does
-// not hand over working 2FA codes. AES-256-GCM with a key derived from
-// NEXTAUTH_SECRET; the payload is `iv.tag.ciphertext` (base64url).
+// Encrypts the TOTP secret at rest (AES-256-GCM, key derived from NEXTAUTH_SECRET)
+// so a database leak alone cannot generate valid codes.
 
 function key(): Buffer {
   const secret = process.env.NEXTAUTH_SECRET;

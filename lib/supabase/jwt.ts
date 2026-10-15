@@ -16,9 +16,6 @@ function parsePrivateJwk(raw: string): JWK | null {
   }
 }
 
-// Modern Supabase projects sign with an asymmetric ES256 key that you import
-// yourself; older/legacy projects use a shared HS256 secret. Prefer ES256 when
-// a private key is configured, otherwise fall back to the shared secret.
 export async function getRealtimeSigner(): Promise<RealtimeSigner | null> {
   const rawJwk = process.env.SUPABASE_JWT_PRIVATE_KEY?.trim();
   if (rawJwk) {
@@ -30,7 +27,6 @@ export async function getRealtimeSigner(): Promise<RealtimeSigner | null> {
   }
 
   const secret = process.env.SUPABASE_JWT_SECRET?.trim();
-  // Guard against pasting an API key (a JWT has two dots) instead of the secret.
   if (secret && secret.split('.').length !== 3) {
     return { alg: 'HS256', key: new TextEncoder().encode(secret) };
   }

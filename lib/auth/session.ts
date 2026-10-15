@@ -19,7 +19,6 @@ export interface SessionContext {
 }
 
 // Resolve the current user + their organization. Returns null when signed out
-// (or when a stale token predates multi-tenancy). API routes turn this into a 401.
 export async function getSessionContext(): Promise<SessionContext | null> {
   const session = await getApiSession();
   const user = session?.user;
@@ -42,7 +41,6 @@ export async function requireSession(): Promise<SessionContext> {
 }
 
 // For server components: also require one of the given roles, otherwise send the
-// user back to their dashboard. API routes use authorize() instead.
 export async function requireRole(...roles: UserRole[]): Promise<SessionContext> {
   const context = await requireSession();
   if (!roles.includes(context.role)) redirect('/dashboard');
@@ -54,7 +52,6 @@ type AuthorizeResult =
   | { ok: false; response: NextResponse };
 
 // API-route guard: 401 when signed out, 403 when the role is not allowed.
-// Pass no roles to accept any signed-in member of the organization.
 export async function authorize(...roles: UserRole[]): Promise<AuthorizeResult> {
   const context = await getSessionContext();
   if (!context) {

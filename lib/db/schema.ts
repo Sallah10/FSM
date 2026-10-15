@@ -7,15 +7,12 @@ import {
   boolean,
 } from 'drizzle-orm/pg-core';
 
-// A workspace/tenant. Every business that signs up gets its own organization,
-// and all customers/technicians/jobs/invoices belong to exactly one.
 export const organizations = pgTable('organizations', {
   id: text('id').primaryKey(),
   name: text('name').notNull(),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });
 
-// role: admin | dispatcher | technician
 export const users = pgTable('users', {
   id: text('id').primaryKey(),
   name: text('name').notNull(),
@@ -23,12 +20,10 @@ export const users = pgTable('users', {
   passwordHash: text('password_hash'),
   role: text('role').notNull().default('dispatcher'),
   orgId: text('org_id').references(() => organizations.id, { onDelete: 'cascade' }),
-  // Links a technician-role user to the crew member they represent.
   technicianId: text('technician_id').references(() => technicians.id, {
     onDelete: 'set null',
   }),
   image: text('image'),
-  // TOTP two-factor auth. Secret is encrypted at rest (see lib/auth/secret-box).
   twoFactorSecret: text('two_factor_secret'),
   twoFactorEnabled: boolean('two_factor_enabled').notNull().default(false),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),

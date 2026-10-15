@@ -80,7 +80,6 @@ const providers: NextAuthOptions["providers"] = [
   }),
 ];
 
-// Google is optional - only switch it on when the keys are actually configured.
 if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
   providers.push(
     GoogleProvider({
@@ -98,12 +97,10 @@ export const authOptions: NextAuthOptions = {
     signIn: "/auth/login",
   },
   callbacks: {
-    // First Google sign-in: make sure the person exists in our own users table.
     async signIn({ user, account }) {
       if (account?.provider === "google" && user.email) {
         let dbUser = await getUserByEmail(user.email);
         if (!dbUser) {
-          // A brand new Google account becomes the admin of its own workspace.
           const org = await createOrganization(
             `${user.name ?? user.email}'s workspace`,
           );

@@ -77,9 +77,8 @@ export function ChatPanel({
   const lastTypingSent = useRef(0);
   const router = useRouter();
 
-  // Opening the team channel marks it read on the server. Refresh once so the
-  // sidebar badge - rendered by the preserved dashboard layout - clears too,
-  // instead of lingering until a hard reload.
+  // Opening the team channel marks it read; refresh once so the sidebar badge
+  // (rendered by the preserved layout) clears too.
   useEffect(() => {
     if (roomId !== 'general') return;
     router.refresh();

@@ -3,7 +3,7 @@
 import { useTheme } from 'next-themes';
 import { signOut } from 'next-auth/react';
 import { useEffect, useState } from 'react';
-import { LogOut, Monitor, Moon, Sun } from 'lucide-react';
+import { ChevronsUpDown, LogOut, Monitor, Moon, Sun } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -46,7 +46,7 @@ export function UserMenu({
     <>
       <DropdownMenu open={menuOpen} onOpenChange={setMenuOpen}>
         <DropdownMenuTrigger
-          className="flex w-full items-center gap-2.5 rounded-md px-2 py-2 text-left outline-none transition-colors hover:bg-sidebar-accent focus-visible:ring-2 focus-visible:ring-ring/50"
+          className="flex w-full items-center gap-2.5 rounded-md px-2 py-2 text-left outline-none transition-colors hover:bg-sidebar-accent focus-visible:ring-2 focus-visible:ring-ring/50 "
           aria-label="Account menu"
         >
           <Avatar>
@@ -58,8 +58,9 @@ export function UserMenu({
               {role ?? email}
             </span>
           </span>
+          <ChevronsUpDown className="size-4 shrink-0 text-muted-foreground" />
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" side="top" className="w-56">
+        <DropdownMenuContent align="end" side="top" className="w-56 ml-3">
           <DropdownMenuLabel className="font-normal">
             <span className="block text-sm font-medium">{name}</span>
             <span className="block text-xs text-muted-foreground">{email}</span>

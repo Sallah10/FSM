@@ -90,7 +90,6 @@ export const updateMemberRoleSchema = z.object({
   role: userRoleSchema,
 });
 
-// Chat rooms are 'general' (team channel) or 'job:<id>' (a job thread).
 export const chatRoomIdSchema = z
   .string()
   .trim()
@@ -105,7 +104,6 @@ export const editMessageSchema = z.object({
   body: z.string().trim().min(1).max(2000),
 });
 
-// Two-factor auth: a 6-digit TOTP code from an authenticator app.
 export const twoFactorCodeSchema = z.string().trim().regex(/^\d{6}$/);
 
 export const loginCheckSchema = z.object({

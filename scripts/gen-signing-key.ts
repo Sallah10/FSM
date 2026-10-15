@@ -1,8 +1,7 @@
 import { randomUUID } from 'node:crypto';
 
-// Generates an EC P-256 (ES256) signing keypair for Supabase Realtime.
-// The private JWK goes in .env.local, the public half lands in Supabase's JWKS
-// once you import the private key under Settings -> JWT signing keys.
+// Generates an EC P-256 (ES256) keypair: the private JWK goes in .env.local, the
+// public half into Supabase under Settings -> JWT signing keys.
 async function main() {
   const pair = (await crypto.subtle.generateKey(
     { name: 'ECDSA', namedCurve: 'P-256' },

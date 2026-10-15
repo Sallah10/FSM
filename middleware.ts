@@ -1,10 +1,8 @@
 import { withAuth } from "next-auth/middleware";
 import { NextResponse } from "next/server";
 
-// Every private area of the app sits behind the NextAuth session cookie. On top
-// of that, the middleware redirects roles away from areas they cannot use, so
-// the browser gets a real 307 before the page even starts streaming. The pages
-// and API routes enforce the same rules again (defense in depth).
+// Redirect disallowed roles here so the browser gets a real 307 before the page
+// starts streaming; the pages and API re-check the same rules.
 const adminOnly = ["/technicians"];
 const staffOnly = ["/invoices", "/analytics"];
 

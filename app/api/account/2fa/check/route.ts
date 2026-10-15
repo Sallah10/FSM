@@ -5,9 +5,8 @@ import { loginCheckSchema } from '@/lib/validation';
 
 export const dynamic = 'force-dynamic';
 
-// The login form calls this after the email + password step to find out whether
-// it needs to ask for a 2FA code. It only reports 2FA status once the password
-// is already correct, so it reveals nothing an ordinary sign-in wouldn't.
+// Called by the login form after email + password to decide whether to ask for a
+// code. It only reports 2FA status once the password is already correct.
 export async function POST(req: Request) {
   const body = await req.json().catch(() => null);
   const parsed = loginCheckSchema.safeParse(body);

@@ -1,7 +1,7 @@
 import { createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
 
-// Time-based One-Time Passwords (RFC 6238), compatible with Google
-// Authenticator / Authy / 1Password. SHA-1, 6 digits, 30s step by default.
+// Time-based One-Time Passwords (RFC 6238): works with Google Authenticator,
+// Authy and 1Password. SHA-1, 6 digits, 30s step by default.
 
 const BASE32_ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
 
@@ -47,7 +47,6 @@ export function base32Decode(input: string): Buffer {
   return Buffer.from(bytes);
 }
 
-// 20 random bytes = 160 bits, the RFC-recommended TOTP secret size.
 export function generateTotpSecret(bytes = 20): string {
   return base32Encode(randomBytes(bytes));
 }
