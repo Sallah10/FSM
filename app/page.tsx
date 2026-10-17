@@ -131,8 +131,10 @@ export default function HomePage() {
 
       <footer className="border-t">
         <div className="mx-auto flex w-full max-w-6xl items-center justify-between px-4 py-6 text-xs text-muted-foreground sm:px-6">
-          <span>QuickSet - field service management demo</span>
-          <span>Next.js · PostgreSQL · Drizzle</span>
+          <span>QuickSet - field service management</span>
+          <span>Built By <a href="https://bello-muhammed.vercel.app/" target="_blank" rel="noopener noreferrer" className="underline hover:no-underline text-md font-bold hover:text-brand">
+            Sallah
+          </a></span>
         </div>
       </footer>
     </div>
