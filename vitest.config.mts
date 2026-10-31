@@ -8,6 +8,9 @@ export default defineConfig({
     environment: 'node',
     include: ['**/*.test.{ts,tsx}'],
     setupFiles: ['./vitest.setup.ts'],
+    // Embedded PGlite migrations can take >10s on a cold Windows run.
+    hookTimeout: 30_000,
+    testTimeout: 20_000,
   },
   resolve: {
     alias: {

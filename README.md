@@ -21,6 +21,7 @@ Built with **Next.js 15 (App Router) · React 19 · TypeScript · Tailwind v4 ·
 - **Live chat & realtime** - a team channel and a per-job thread with edit/delete on your own messages, a typing indicator, and an unread badge on the sidebar, plus live board updates. With Supabase configured, new/edited/deleted messages and job/invoice changes stream in over Realtime (Postgres Changes) without a refresh; without it, everything still works over REST.
 - **Two-factor authentication** - turn on TOTP from **Settings → Security** by scanning a QR code (or entering a key) into Google Authenticator, Authy or 1Password. Once on, signing in asks for a 6-digit code after the password; secrets are encrypted at rest, and codes tolerate one step of clock drift.
 - **Installable (PWA)** - a web manifest, maskable icons and a service worker make QuickSet installable to the home screen or desktop, with an "add to home screen" prompt and a friendly offline fallback. Static assets are cached stale-while-revalidate; API responses and rendered HTML are never cached.
+- **Search & pagination** - server-side search and paging on Jobs, Customers, Invoices and Technicians, driven by shareable URLs (`?page=&q=&status=`).
 - **Settings** - account profile, appearance (light / dark / system), a working **Security** tab (two-factor setup), and a working **Organization** tab for members, roles and invites.
 - **UI** - a consistent, data-dense design system with light/dark mode, a responsive sidebar and a mobile drawer, plus toast feedback on every write. Loading skeletons on every route, a friendly 404 with an auto-redirect countdown, show/hide password fields, and a confirm step before signing out.
 
@@ -83,7 +84,7 @@ Live chat and live board updates use Supabase Realtime. They are opt-in:
 3. From **Project Settings -> API**, copy the **Project URL** and the **anon public** key into `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY`. For signing, either run `npm run gen:signing-key` and put the printed key in `SUPABASE_JWT_PRIVATE_KEY`, or copy the **Legacy JWT Secret** (Settings -> API -> JWT Settings) into `SUPABASE_JWT_SECRET`.
 4. Apply the Realtime + row-level-security policies: `npm run supabase:setup` (or paste `supabase/setup.sql` into the Supabase SQL editor).
 
-Each subscriber gets a JWT carrying their `org` claim, and RLS ensures Realtime only ever pushes their own organization's rows.
+Each subscriber gets a short-lived JWT (1 hour, refreshed before expiry) carrying their `org` claim. RLS scopes `INSERT`/`UPDATE` events and all reads to that organization. Note that Supabase does **not** apply RLS to `DELETE` events and they can't be filtered, so delete payloads carry only the row's primary key and may be delivered across organizations; here that at most triggers a board refresh or is a no-op in chat, and IDs are opaque random strings rather than sequential numbers. The client only ever *writes* through the validated, org-scoped API; the sole client-published Realtime message is the ephemeral `typing` broadcast (nothing persisted, not RLS-scoped).
 
 ### Demo login
 
@@ -92,7 +93,7 @@ email:    demo@quickset.com      (admin)
 password: demo123
 ```
 
-The demo organization also seeds a teammate per role - `dispatcher@quickset.com` and `technician@quickset.com`, both with the password `demo123` - so you can see how access differs.
+The demo organization also seeds a teammate per role - `dispatcher@quickset.com` and `technician@quickset.com`, both with the password `demo123` - so you can see how access differs. The login page lists all three as click-to-fill demo accounts.
 
 Or hit **Sign up** to create a real account and your own fresh organization (passwords are stored as salted scrypt hashes).
 
@@ -183,7 +184,7 @@ Reads happen in Server Components straight from Postgres, scoped to the session'
 
 - `npm run lint` - no warnings or errors
 - `npm run typecheck` - clean
-- `npm test` - 32 tests across 5 files (queries, formatting, TOTP vectors)
+- `npm test` - 37 tests across 5 files (queries, formatting, pagination/search, TOTP vectors)
 - `npm run smoke` - 63 HTTP checks (auth, page rendering, CRUD, validation, org invites, page + API role enforcement, chat edit/delete, two-factor setup + login)
 - Production build - 47 routes (26 pages incl. PWA assets + 21 API), 103 kB shared JS
 - `npm audit --omit=dev` - **0 vulnerabilities** in production dependencies

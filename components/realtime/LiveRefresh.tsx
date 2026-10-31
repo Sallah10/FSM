@@ -4,9 +4,10 @@ import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import type { RealtimeChannel } from '@supabase/supabase-js';
 import {
-  fetchRealtimeToken,
   getSupabase,
   isRealtimeConfigured,
+  REALTIME_TOKEN_REFRESH_MS,
+  refreshRealtimeAuth,
 } from '@/lib/supabase/client';
 
 // Subscribes to row changes for the current org and refreshes the server
@@ -24,22 +25,23 @@ export function LiveRefresh({
     if (!isRealtimeConfigured()) return;
     let cancelled = false;
     let channel: RealtimeChannel | null = null;
-    let timer: ReturnType<typeof setTimeout> | null = null;
+    let refreshTimer: ReturnType<typeof setTimeout> | null = null;
+    let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+    let tokenTimer: ReturnType<typeof setInterval> | null = null;
 
     const schedule = () => {
-      if (timer) clearTimeout(timer);
-      timer = setTimeout(() => router.refresh(), 600);
+      if (refreshTimer) clearTimeout(refreshTimer);
+      refreshTimer = setTimeout(() => router.refresh(), 600);
     };
 
-    (async () => {
+    async function connect() {
       const supabase = getSupabase();
-      const token = await fetchRealtimeToken();
-      if (!supabase || !token || cancelled) return;
+      if (!supabase || cancelled) return;
+      if (!(await refreshRealtimeAuth()) || cancelled) return;
 
-      await supabase.realtime.setAuth(token);
-      channel = supabase.channel(`org:${orgId}`);
+      let next = supabase.channel(`org:${orgId}`);
       for (const table of tables) {
-        channel = channel.on(
+        next = next.on(
           'postgres_changes',
           {
             event: '*',
@@ -50,12 +52,47 @@ export function LiveRefresh({
           schedule,
         );
       }
-      channel.subscribe();
-    })();
+
+      next.subscribe((status) => {
+        if (cancelled) return;
+        if (
+          status === 'CHANNEL_ERROR' ||
+          status === 'TIMED_OUT' ||
+          status === 'CLOSED'
+        ) {
+          if (reconnectTimer) clearTimeout(reconnectTimer);
+          reconnectTimer = setTimeout(() => {
+            reconnectTimer = null;
+            void reconnect();
+          }, 2000);
+        }
+      });
+
+      channel = next;
+    }
+
+    async function reconnect() {
+      if (cancelled) return;
+      const supabase = getSupabase();
+      if (channel && supabase) {
+        await supabase.removeChannel(channel);
+        channel = null;
+      }
+      await connect();
+    }
+
+    void connect();
+
+    // Keep the Realtime JWT fresh for tabs left open past the 1-hour expiry.
+    tokenTimer = setInterval(() => {
+      if (!cancelled) void refreshRealtimeAuth();
+    }, REALTIME_TOKEN_REFRESH_MS);
 
     return () => {
       cancelled = true;
-      if (timer) clearTimeout(timer);
+      if (refreshTimer) clearTimeout(refreshTimer);
+      if (reconnectTimer) clearTimeout(reconnectTimer);
+      if (tokenTimer) clearInterval(tokenTimer);
       const supabase = getSupabase();
       if (channel && supabase) supabase.removeChannel(channel);
     };

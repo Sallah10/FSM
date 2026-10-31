@@ -182,3 +182,48 @@ describe('stats', () => {
     expect(stats.totalTechnicians).toBe(1);
   });
 });
+
+describe('pagination and search', () => {
+  it('pages jobs and reports the total', async () => {
+    const first = await queries.pageJobs(ORG, { page: 1, pageSize: 1 });
+    expect(first.total).toBe(2);
+    expect(first.page).toBe(1);
+    expect(first.items).toHaveLength(1);
+
+    const second = await queries.pageJobs(ORG, { page: 2, pageSize: 1 });
+    expect(second.page).toBe(2);
+    expect(second.items).toHaveLength(1);
+    expect(second.items[0].id).not.toBe(first.items[0].id);
+  });
+
+  it('clamps an out-of-range page', async () => {
+    const page = await queries.pageJobs(ORG, { page: 99, pageSize: 1 });
+    expect(page.page).toBe(2);
+    expect(page.items).toHaveLength(1);
+  });
+
+  it('filters jobs by search and status', async () => {
+    const bySearch = await queries.pageJobs(ORG, { search: 'tap' });
+    expect(bySearch.total).toBe(1);
+    expect(bySearch.items[0].id).toBe('job_2');
+
+    const byStatus = await queries.pageJobs(ORG, { status: 'completed' });
+    expect(byStatus.items.every((job) => job.status === 'completed')).toBe(true);
+  });
+
+  it('searches customers by name', async () => {
+    const found = await queries.pageCustomers(ORG, { search: 'ada' });
+    expect(found.total).toBe(1);
+    expect(found.items[0].id).toBe('cus_1');
+
+    const none = await queries.pageCustomers(ORG, { search: 'zzz' });
+    expect(none.total).toBe(0);
+    expect(none.items).toHaveLength(0);
+  });
+
+  it('never returns rows from another organization', async () => {
+    const other = await queries.pageJobs('org_other', { page: 1 });
+    expect(other.total).toBe(0);
+    expect(other.items).toHaveLength(0);
+  });
+});

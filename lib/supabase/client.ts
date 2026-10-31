@@ -1,4 +1,4 @@
-import { createClient, type SupabaseClient } from '@supabase/supabase-js';
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -22,11 +22,24 @@ export function getSupabase(): SupabaseClient | null {
 
 export async function fetchRealtimeToken(): Promise<string | null> {
   try {
-    const res = await fetch('/api/realtime/token');
+    const res = await fetch("/api/realtime/token");
     if (!res.ok) return null;
     const data = (await res.json()) as { token?: string };
     return data.token ?? null;
   } catch {
     return null;
   }
+}
+
+// Realtime tokens live for 1 hour, so refresh well before expiry. Components
+// also reconnect on channel errors, which re-runs this with a fresh token.
+export const REALTIME_TOKEN_REFRESH_MS = 50 * 60 * 1000;
+
+export async function refreshRealtimeAuth(): Promise<boolean> {
+  const supabase = getSupabase();
+  if (!supabase) return false;
+  const token = await fetchRealtimeToken();
+  if (!token) return false;
+  await supabase.realtime.setAuth(token);
+  return true;
 }

@@ -43,6 +43,7 @@ yarn-error.log*
 /PROJECT_EXPLAINER.md
 
 /HANDOVER.md
+/WRITEUP_BRIEF.md
 
 # vercel
 .vercel

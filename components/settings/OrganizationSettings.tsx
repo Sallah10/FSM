@@ -72,7 +72,7 @@ export function OrganizationSettings() {
       setCopiedToken(token);
       setTimeout(() => setCopiedToken(null), 1500);
     } catch {
-      setMessage('Copy failed — select the link and copy manually.');
+      setMessage('Copy failed - select the link and copy manually.');
     }
   }
 
@@ -109,7 +109,7 @@ export function OrganizationSettings() {
       return;
     }
     setInviteEmail('');
-    setMessage('Invite ready — copy the link and send it to them.');
+    setMessage('Invite ready - copy the link and send it to them.');
     if (data?.invite) {
       setInvites((prev) => [
         data.invite,

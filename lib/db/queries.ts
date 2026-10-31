@@ -1,6 +1,7 @@
-import { and, desc, eq, gt, ne, sql } from 'drizzle-orm';
+import { and, desc, eq, gt, ilike, inArray, ne, or, sql } from 'drizzle-orm';
 import { randomUUID } from 'node:crypto';
 import { db } from './index';
+import { PAGE_SIZE } from '@/lib/pagination';
 import {
   chatReads,
   customers,
@@ -83,6 +84,86 @@ export async function listJobs(
     priority: row.priority as JobPriority,
     customer: row.customer ?? 'Unknown customer',
   }));
+}
+
+export type PageResult<T> = { items: T[]; total: number; page: number };
+
+function paginate(page: number, total: number, pageSize: number) {
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+  const current = Math.min(Math.max(1, page), totalPages);
+  return { current, offset: (current - 1) * pageSize };
+}
+
+export async function pageJobs(
+  orgId: string,
+  options: {
+    page?: number;
+    pageSize?: number;
+    search?: string;
+    status?: JobStatus;
+    technicianId?: string;
+  } = {},
+): Promise<PageResult<Job>> {
+  const pageSize = options.pageSize ?? PAGE_SIZE;
+  const query = options.search?.trim();
+  const like = `%${query}%`;
+
+  const where = and(
+    eq(jobs.orgId, orgId),
+    options.technicianId ? eq(jobs.technicianId, options.technicianId) : undefined,
+    options.status ? eq(jobs.status, options.status) : undefined,
+    query
+      ? or(
+          ilike(jobs.title, like),
+          ilike(customers.name, like),
+          ilike(technicians.name, like),
+        )
+      : undefined,
+  );
+
+  const countRows = await db
+    .select({ value: sql<number>`count(*)` })
+    .from(jobs)
+    .leftJoin(customers, eq(jobs.customerId, customers.id))
+    .leftJoin(technicians, eq(jobs.technicianId, technicians.id))
+    .where(where);
+
+  const total = Number(countRows[0]?.value ?? 0);
+  const { current, offset } = paginate(options.page ?? 1, total, pageSize);
+
+  const rows = await db
+    .select({
+      id: jobs.id,
+      title: jobs.title,
+      description: jobs.description,
+      status: jobs.status,
+      priority: jobs.priority,
+      date: jobs.date,
+      customerId: jobs.customerId,
+      technicianId: jobs.technicianId,
+      lat: jobs.lat,
+      lng: jobs.lng,
+      customer: customers.name,
+      technician: technicians.name,
+    })
+    .from(jobs)
+    .leftJoin(customers, eq(jobs.customerId, customers.id))
+    .leftJoin(technicians, eq(jobs.technicianId, technicians.id))
+    .where(where)
+    .orderBy(desc(jobs.date))
+    .limit(pageSize)
+    .offset(offset);
+
+  return {
+    items: rows.map((row) => ({
+      ...row,
+      status: row.status as JobStatus,
+      priority: row.priority as JobPriority,
+      customer: row.customer ?? 'Unknown customer',
+    })),
+    total,
+    page: current,
+  };
 }
 
 export async function getJob(orgId: string, id: string): Promise<Job | undefined> {
@@ -243,6 +324,43 @@ export async function listCustomers(orgId: string): Promise<Customer[]> {
     .orderBy(customers.name);
 }
 
+export async function pageCustomers(
+  orgId: string,
+  options: { page?: number; pageSize?: number; search?: string } = {},
+): Promise<PageResult<Customer>> {
+  const pageSize = options.pageSize ?? PAGE_SIZE;
+  const query = options.search?.trim();
+  const like = `%${query}%`;
+
+  const where = and(
+    eq(customers.orgId, orgId),
+    query
+      ? or(
+          ilike(customers.name, like),
+          ilike(customers.email, like),
+          ilike(customers.address, like),
+        )
+      : undefined,
+  );
+
+  const countRows = await db
+    .select({ value: sql<number>`count(*)` })
+    .from(customers)
+    .where(where);
+  const total = Number(countRows[0]?.value ?? 0);
+  const { current, offset } = paginate(options.page ?? 1, total, pageSize);
+
+  const items = await db
+    .select()
+    .from(customers)
+    .where(where)
+    .orderBy(customers.name)
+    .limit(pageSize)
+    .offset(offset);
+
+  return { items, total, page: current };
+}
+
 export async function getCustomer(
   orgId: string,
   id: string,
@@ -312,6 +430,64 @@ export async function listTechnicians(orgId: string): Promise<Technician[]> {
     .from(technicians)
     .where(eq(technicians.orgId, orgId))
     .orderBy(technicians.name);
+}
+
+export async function pageTechnicians(
+  orgId: string,
+  options: { page?: number; pageSize?: number; search?: string } = {},
+): Promise<PageResult<Technician>> {
+  const pageSize = options.pageSize ?? PAGE_SIZE;
+  const query = options.search?.trim();
+  const like = `%${query}%`;
+
+  const where = and(
+    eq(technicians.orgId, orgId),
+    query
+      ? or(
+          ilike(technicians.name, like),
+          ilike(technicians.role, like),
+          ilike(technicians.email, like),
+        )
+      : undefined,
+  );
+
+  const countRows = await db
+    .select({ value: sql<number>`count(*)` })
+    .from(technicians)
+    .where(where);
+  const total = Number(countRows[0]?.value ?? 0);
+  const { current, offset } = paginate(options.page ?? 1, total, pageSize);
+
+  const items = await db
+    .select()
+    .from(technicians)
+    .where(where)
+    .orderBy(technicians.name)
+    .limit(pageSize)
+    .offset(offset);
+
+  return { items, total, page: current };
+}
+
+export async function jobCountsForTechnicians(
+  orgId: string,
+  technicianIds: string[],
+): Promise<Record<string, number>> {
+  if (!technicianIds.length) return {};
+
+  const rows = await db
+    .select({ technicianId: jobs.technicianId, value: sql<number>`count(*)` })
+    .from(jobs)
+    .where(
+      and(eq(jobs.orgId, orgId), inArray(jobs.technicianId, technicianIds)),
+    )
+    .groupBy(jobs.technicianId);
+
+  const counts: Record<string, number> = {};
+  for (const row of rows) {
+    if (row.technicianId) counts[row.technicianId] = Number(row.value);
+  }
+  return counts;
 }
 
 export async function getTechnician(
@@ -419,6 +595,84 @@ export async function listInvoices(orgId: string): Promise<Invoice[]> {
     customer: row.customer ?? 'Unknown customer',
     items: items.get(row.id) ?? [],
   }));
+}
+
+async function itemsForInvoices(invoiceIds: string[]) {
+  const grouped = new Map<string, { name: string; price: number }[]>();
+  if (!invoiceIds.length) return grouped;
+
+  const rows = await db
+    .select({
+      invoiceId: invoiceItems.invoiceId,
+      name: invoiceItems.name,
+      price: invoiceItems.price,
+    })
+    .from(invoiceItems)
+    .where(inArray(invoiceItems.invoiceId, invoiceIds));
+
+  for (const item of rows) {
+    const list = grouped.get(item.invoiceId) ?? [];
+    list.push({ name: item.name, price: item.price });
+    grouped.set(item.invoiceId, list);
+  }
+  return grouped;
+}
+
+export async function pageInvoices(
+  orgId: string,
+  options: {
+    page?: number;
+    pageSize?: number;
+    search?: string;
+    status?: InvoiceStatus;
+  } = {},
+): Promise<PageResult<Invoice>> {
+  const pageSize = options.pageSize ?? PAGE_SIZE;
+  const query = options.search?.trim();
+  const like = `%${query}%`;
+
+  const where = and(
+    eq(invoices.orgId, orgId),
+    options.status ? eq(invoices.status, options.status) : undefined,
+    query ? or(ilike(invoices.id, like), ilike(customers.name, like)) : undefined,
+  );
+
+  const countRows = await db
+    .select({ value: sql<number>`count(*)` })
+    .from(invoices)
+    .leftJoin(customers, eq(invoices.customerId, customers.id))
+    .where(where);
+  const total = Number(countRows[0]?.value ?? 0);
+  const { current, offset } = paginate(options.page ?? 1, total, pageSize);
+
+  const rows = await db
+    .select({
+      id: invoices.id,
+      customerId: invoices.customerId,
+      amount: invoices.amount,
+      status: invoices.status,
+      date: invoices.date,
+      customer: customers.name,
+    })
+    .from(invoices)
+    .leftJoin(customers, eq(invoices.customerId, customers.id))
+    .where(where)
+    .orderBy(desc(invoices.date))
+    .limit(pageSize)
+    .offset(offset);
+
+  const items = await itemsForInvoices(rows.map((row) => row.id));
+
+  return {
+    items: rows.map((row) => ({
+      ...row,
+      status: row.status as InvoiceStatus,
+      customer: row.customer ?? 'Unknown customer',
+      items: items.get(row.id) ?? [],
+    })),
+    total,
+    page: current,
+  };
 }
 
 export async function getInvoice(

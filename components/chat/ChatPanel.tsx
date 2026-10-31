@@ -10,9 +10,10 @@ import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
 import type { Message } from '@/lib/types';
 import {
-  fetchRealtimeToken,
   getSupabase,
   isRealtimeConfigured,
+  REALTIME_TOKEN_REFRESH_MS,
+  refreshRealtimeAuth,
 } from '@/lib/supabase/client';
 
 function initials(name: string) {
@@ -115,14 +116,16 @@ export function ChatPanel({
     if (!isRealtimeConfigured()) return;
     let cancelled = false;
     let typingTimer: ReturnType<typeof setTimeout> | undefined;
+    let channel: RealtimeChannel | null = null;
+    let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+    let tokenTimer: ReturnType<typeof setInterval> | null = null;
 
-    (async () => {
+    async function connect() {
       const supabase = getSupabase();
-      const token = await fetchRealtimeToken();
-      if (!supabase || !token || cancelled) return;
+      if (!supabase || cancelled) return;
+      if (!(await refreshRealtimeAuth()) || cancelled) return;
 
-      await supabase.realtime.setAuth(token);
-      const channel = supabase
+      const next = supabase
         .channel(`room:${roomId}`)
         .on(
           'postgres_changes',
@@ -148,21 +151,56 @@ export function ChatPanel({
           setTypingName(data.name);
           clearTimeout(typingTimer);
           typingTimer = setTimeout(() => setTypingName(null), 3000);
-        })
-        .subscribe((status) => {
-          if (!cancelled) setLive(status === 'SUBSCRIBED');
         });
 
-      channelRef.current = channel;
-    })();
+      next.subscribe((status) => {
+        if (cancelled) return;
+        setLive(status === 'SUBSCRIBED');
+        if (
+          status === 'CHANNEL_ERROR' ||
+          status === 'TIMED_OUT' ||
+          status === 'CLOSED'
+        ) {
+          setLive(false);
+          if (reconnectTimer) clearTimeout(reconnectTimer);
+          reconnectTimer = setTimeout(() => {
+            reconnectTimer = null;
+            void reconnect();
+          }, 2000);
+        }
+      });
+
+      channel = next;
+      channelRef.current = next;
+    }
+
+    async function reconnect() {
+      if (cancelled) return;
+      const supabase = getSupabase();
+      if (channel && supabase) {
+        await supabase.removeChannel(channel);
+        channel = null;
+        channelRef.current = null;
+      }
+      await connect();
+    }
+
+    void connect();
+
+    // Keep the Realtime JWT fresh for tabs left open past the 1-hour expiry.
+    tokenTimer = setInterval(() => {
+      if (!cancelled) void refreshRealtimeAuth();
+    }, REALTIME_TOKEN_REFRESH_MS);
 
     return () => {
       cancelled = true;
       clearTimeout(typingTimer);
+      if (reconnectTimer) clearTimeout(reconnectTimer);
+      if (tokenTimer) clearInterval(tokenTimer);
       const supabase = getSupabase();
-      const channel = channelRef.current;
+      const current = channelRef.current;
       channelRef.current = null;
-      if (channel && supabase) supabase.removeChannel(channel);
+      if (current && supabase) supabase.removeChannel(current);
     };
   }, [roomId, currentUserId]);
 

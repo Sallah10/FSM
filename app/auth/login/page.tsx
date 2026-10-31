@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input';
 import { PasswordInput } from '@/components/ui/password-input';
 import { Button } from '@/components/ui/button';
 import { FormRow } from '@/components/forms/fields';
+import { DemoAccounts } from '@/components/auth/DemoAccounts';
 import {
   Card,
   CardContent,
@@ -204,10 +205,12 @@ function LoginForm() {
             ) : null}
 
             {phase === 'credentials' ? (
-              <div className="rounded-md border bg-muted/40 px-3 py-2 text-center text-xs text-muted-foreground">
-                Demo - <span className="font-mono">demo@quickset.com</span> /{' '}
-                <span className="font-mono">demo123</span>
-              </div>
+              <DemoAccounts
+                onPick={(email, password) => {
+                  setForm({ email, password });
+                  setError('');
+                }}
+              />
             ) : null}
           </form>
         </CardContent>

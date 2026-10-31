@@ -119,7 +119,7 @@ export function TwoFactorSettings() {
           <p className="text-sm font-medium">Two-factor authentication</p>
           <p className="text-xs text-muted-foreground">
             {enabled
-              ? 'On — you enter a code from your authenticator app when signing in.'
+              ? 'On - you enter a code from your authenticator app when signing in.'
               : 'Add a one-time code from an authenticator app on top of your password.'}
           </p>
         </div>
